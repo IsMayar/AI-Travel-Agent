@@ -49,6 +49,40 @@ class TripPlanControllerTest {
     }
 
     @Test
+    void planTripParsesTripDetailsFromMessage() throws Exception {
+        mockMvc.perform(post("/api/trips/plan")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "message": "Plan a 3-day trip from Kabul to Tokyo under $2500"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.destination").value("Tokyo"))
+                .andExpect(jsonPath("$.origin").value("Kabul"))
+                .andExpect(jsonPath("$.budget").value(2500))
+                .andExpect(jsonPath("$.days").value(3))
+                .andExpect(jsonPath("$.hotelOptions[0].name").value("Mock Hotel Tokyo"))
+                .andExpect(jsonPath("$.itinerary[0].activities[0]").value("Arrive in Tokyo"));
+    }
+
+    @Test
+    void planTripUsesDefaultsWhenMessageIsMissingDetails() throws Exception {
+        mockMvc.perform(post("/api/trips/plan")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "message": "Please plan something fun"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.destination").value("Dubai"))
+                .andExpect(jsonPath("$.origin").value("Austin"))
+                .andExpect(jsonPath("$.budget").value(1500))
+                .andExpect(jsonPath("$.days").value(7));
+    }
+
+    @Test
     void planTripAllowsLocalhostFrontendCors() throws Exception {
         mockMvc.perform(post("/api/trips/plan")
                         .header("Origin", "http://localhost:5173")
