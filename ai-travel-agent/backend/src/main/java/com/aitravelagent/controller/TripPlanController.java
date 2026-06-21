@@ -1,24 +1,42 @@
 package com.aitravelagent.controller;
 
+import java.util.List;
+
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.aitravelagent.dto.SavedTripRequest;
+import com.aitravelagent.dto.SavedTripResponse;
 import com.aitravelagent.dto.TripPlanRequest;
 import com.aitravelagent.dto.TripPlanResponse;
+import com.aitravelagent.service.SavedTripService;
 import com.aitravelagent.service.TripPlanService;
 
 @RestController
 public class TripPlanController {
 
     private final TripPlanService tripPlanService;
+    private final SavedTripService savedTripService;
 
-    public TripPlanController(TripPlanService tripPlanService) {
+    public TripPlanController(TripPlanService tripPlanService, SavedTripService savedTripService) {
         this.tripPlanService = tripPlanService;
+        this.savedTripService = savedTripService;
     }
 
     @PostMapping("/api/trips/plan")
     public TripPlanResponse planTrip(@RequestBody TripPlanRequest request) {
         return tripPlanService.planTrip(request);
+    }
+
+    @PostMapping("/api/trips/save")
+    public SavedTripResponse saveTrip(@RequestBody SavedTripRequest request) {
+        return savedTripService.saveTrip(request);
+    }
+
+    @GetMapping("/api/trips")
+    public List<SavedTripResponse> getTrips() {
+        return savedTripService.getSavedTrips();
     }
 }
