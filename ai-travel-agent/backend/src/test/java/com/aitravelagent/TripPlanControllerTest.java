@@ -1,5 +1,6 @@
 package com.aitravelagent;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -94,5 +95,53 @@ class TripPlanControllerTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"));
+    }
+
+    @Test
+    void saveTripStoresBasicTripData() throws Exception {
+        mockMvc.perform(post("/api/trips/save")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "userMessage": "Plan a 5-day trip from Austin to Paris under $2200",
+                                  "origin": "Austin",
+                                  "destination": "Paris",
+                                  "budget": 2200,
+                                  "days": 5
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id").isNumber())
+                .andExpect(jsonPath("$.userMessage").value("Plan a 5-day trip from Austin to Paris under $2200"))
+                .andExpect(jsonPath("$.origin").value("Austin"))
+                .andExpect(jsonPath("$.destination").value("Paris"))
+                .andExpect(jsonPath("$.budget").value(2200))
+                .andExpect(jsonPath("$.days").value(5))
+                .andExpect(jsonPath("$.createdAt").isNotEmpty());
+    }
+
+    @Test
+    void getTripsReturnsSavedTrips() throws Exception {
+        mockMvc.perform(post("/api/trips/save")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "userMessage": "Plan a 2-day trip from Austin to Miami under $800",
+                                  "origin": "Austin",
+                                  "destination": "Miami",
+                                  "budget": 800,
+                                  "days": 2
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/trips"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$[0].origin").value("Austin"))
+                .andExpect(jsonPath("$[0].destination").value("Miami"))
+                .andExpect(jsonPath("$[0].budget").value(800))
+                .andExpect(jsonPath("$[0].days").value(2));
     }
 }
