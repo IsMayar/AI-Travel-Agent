@@ -1,14 +1,17 @@
 import { FormEvent, useState } from "react";
 
-import { planTrip, TripPlanResponse } from "../services/trips";
+import {
+  TripPlanResponse,
+  usePlanTripMutation,
+} from "../features/trips/tripsApi";
 
 const placeholder = "Plan a 7-day trip from Austin to Dubai under $1500";
 
 export function HomePage() {
   const [message, setMessage] = useState("");
   const [tripPlan, setTripPlan] = useState<TripPlanResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [planTrip, { isLoading }] = usePlanTripMutation();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -20,17 +23,14 @@ export function HomePage() {
       return;
     }
 
-    setIsLoading(true);
     setError(null);
     setTripPlan(null);
 
     try {
-      const result = await planTrip(trimmedMessage);
+      const result = await planTrip({ message: trimmedMessage }).unwrap();
       setTripPlan(result);
     } catch {
       setError("Could not plan the trip right now. Please try again.");
-    } finally {
-      setIsLoading(false);
     }
   }
 
