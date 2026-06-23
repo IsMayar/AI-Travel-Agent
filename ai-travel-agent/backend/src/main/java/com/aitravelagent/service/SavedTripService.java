@@ -1,6 +1,7 @@
 package com.aitravelagent.service;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
@@ -38,6 +39,15 @@ public class SavedTripService {
                 .stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    public Optional<SavedTripResponse> getTripById(Long id) {
+        if (id == null) {
+            return Optional.empty();
+        }
+
+        return savedTripRepository.findById(id)
+                .map(this::toResponse);
     }
 
     public boolean deleteTripById(Long id) {

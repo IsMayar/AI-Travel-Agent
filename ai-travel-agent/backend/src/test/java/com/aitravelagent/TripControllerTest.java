@@ -171,6 +171,42 @@ class TripControllerTest {
     }
 
     @Test
+    void getTripReturnsSavedTripById() throws Exception {
+        MvcResult saveResult = mockMvc.perform(post("/api/trips/save")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "userMessage": "Plan a 6-day trip from Austin to Lisbon under $1800",
+                                  "origin": "Austin",
+                                  "destination": "Lisbon",
+                                  "budget": 1800,
+                                  "days": 6
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Integer id = JsonPath.read(saveResult.getResponse().getContentAsString(), "$.id");
+
+        mockMvc.perform(get("/api/trips/{id}", id))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id").value(id))
+                .andExpect(jsonPath("$.userMessage").value("Plan a 6-day trip from Austin to Lisbon under $1800"))
+                .andExpect(jsonPath("$.origin").value("Austin"))
+                .andExpect(jsonPath("$.destination").value("Lisbon"))
+                .andExpect(jsonPath("$.budget").value(1800))
+                .andExpect(jsonPath("$.days").value(6))
+                .andExpect(jsonPath("$.createdAt").isNotEmpty());
+    }
+
+    @Test
+    void getTripReturnsNotFoundForMissingTrip() throws Exception {
+        mockMvc.perform(get("/api/trips/{id}", 999999L))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void deleteTripRemovesSavedTrip() throws Exception {
         MvcResult saveResult = mockMvc.perform(post("/api/trips/save")
                         .contentType(MediaType.APPLICATION_JSON)

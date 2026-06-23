@@ -45,6 +45,13 @@ public class TripController {
         return savedTripService.getSavedTrips();
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<SavedTripResponse> getTrip(@PathVariable Long id) {
+        return savedTripService.getTripById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTrip(@PathVariable Long id) {
         if (!savedTripService.deleteTripById(id)) {
