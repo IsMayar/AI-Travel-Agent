@@ -143,6 +143,22 @@ GET /api/trips
 
 Returns saved trips ordered by newest first.
 
+### Get Saved Trip
+
+```http
+GET /api/trips/{id}
+```
+
+Returns one saved trip by id. Returns `404 Not Found` when the saved trip does not exist.
+
+### Delete Saved Trip
+
+```http
+DELETE /api/trips/{id}
+```
+
+Deletes one saved trip by id. Returns `204 No Content` when deleted and `404 Not Found` when the saved trip does not exist.
+
 ## Project Structure
 
 ```text
