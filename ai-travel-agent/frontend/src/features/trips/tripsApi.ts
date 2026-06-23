@@ -90,11 +90,16 @@ export const tripsApi = api.injectEndpoints({
             ]
           : [{ type: "SavedTrips", id: "LIST" }],
     }),
+    getSavedTrip: builder.query<SavedTrip, number>({
+      query: (id) => `/api/trips/${id}`,
+      providesTags: (_result, _error, id) => [{ type: "SavedTrips", id }],
+    }),
   }),
 });
 
 export const {
   useDeleteSavedTripMutation,
+  useGetSavedTripQuery,
   useGetSavedTripsQuery,
   usePlanTripMutation,
   useSaveTripMutation,

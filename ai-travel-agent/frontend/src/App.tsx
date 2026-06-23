@@ -2,6 +2,7 @@ import { Layout } from "./components/Layout";
 import { LandingPage } from "./pages/LandingPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { SavedTripsPage } from "./pages/SavedTripsPage";
+import { TripDetailsPage } from "./pages/TripDetailsPage";
 import { TripPlannerPage } from "./pages/TripPlannerPage";
 
 function normalizePath(pathname: string) {
@@ -25,6 +26,11 @@ function renderPage() {
 
   if (path === "/saved-trips") {
     return <SavedTripsPage />;
+  }
+
+  const tripDetailsMatch = path.match(/^\/trips\/([^/]+)$/);
+  if (tripDetailsMatch) {
+    return <TripDetailsPage tripIdParam={tripDetailsMatch[1]} />;
   }
 
   return <NotFoundPage />;

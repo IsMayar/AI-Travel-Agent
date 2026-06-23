@@ -89,6 +89,7 @@ export function SavedTripsPage() {
           <div className="saved-trip-grid">
             {trips.map((trip) => (
               <TripCard
+                href={`/trips/${trip.id}`}
                 isDeleting={deletingTripId === trip.id}
                 key={trip.id}
                 onDelete={handleDeleteTrip}

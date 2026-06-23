@@ -2,6 +2,7 @@ import type { SavedTrip } from "../features/trips/tripsApi";
 
 interface TripCardProps {
   trip: SavedTrip;
+  href?: string;
   isDeleting?: boolean;
   onDelete?: (trip: SavedTrip) => void;
 }
@@ -20,9 +21,14 @@ function formatDate(value: string) {
   }).format(date);
 }
 
-export function TripCard({ trip, isDeleting = false, onDelete }: TripCardProps) {
-  return (
-    <article className="trip-card">
+export function TripCard({
+  trip,
+  href,
+  isDeleting = false,
+  onDelete,
+}: TripCardProps) {
+  const content = (
+    <>
       <div>
         <p className="eyebrow">{formatDate(trip.createdAt)}</p>
         <h3>
@@ -34,6 +40,18 @@ export function TripCard({ trip, isDeleting = false, onDelete }: TripCardProps) 
         <span>{trip.days} days</span>
         <span>${trip.budget.toLocaleString()}</span>
       </div>
+    </>
+  );
+
+  return (
+    <article className="trip-card">
+      {href ? (
+        <a className="trip-card-link" href={href}>
+          {content}
+        </a>
+      ) : (
+        content
+      )}
       {onDelete && (
         <div className="trip-card-actions">
           <button
