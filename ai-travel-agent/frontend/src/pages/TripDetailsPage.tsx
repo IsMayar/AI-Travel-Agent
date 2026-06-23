@@ -1,10 +1,15 @@
+import { type FormEvent, useState } from "react";
 import { skipToken } from "@reduxjs/toolkit/query";
 
 import { Container } from "../components/Container";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { SectionTitle } from "../components/SectionTitle";
-import { useGetSavedTripQuery } from "../features/trips/tripsApi";
+import {
+  type TripNote,
+  useAddTripNoteMutation,
+  useGetSavedTripQuery,
+} from "../features/trips/tripsApi";
 
 interface TripDetailsPageProps {
   tripIdParam: string;
@@ -43,9 +48,34 @@ function TripDetailsSkeleton() {
 
 export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
   const tripId = parseTripId(tripIdParam);
+  const [noteContent, setNoteContent] = useState("");
+  const [savedNotes, setSavedNotes] = useState<TripNote[]>([]);
+  const [noteError, setNoteError] = useState("");
   const { data: trip, isError, isLoading } = useGetSavedTripQuery(
     tripId ?? skipToken
   );
+  const [addTripNote, { isLoading: isSavingNote }] = useAddTripNoteMutation();
+
+  async function handleNoteSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!tripId || !noteContent.trim()) {
+      return;
+    }
+
+    setNoteError("");
+
+    try {
+      const createdNote = await addTripNote({
+        tripId,
+        note: { content: noteContent.trim() },
+      }).unwrap();
+      setSavedNotes((currentNotes) => [createdNote, ...currentNotes]);
+      setNoteContent("");
+    } catch {
+      setNoteError("Could not save this note. Please try again.");
+    }
+  }
 
   return (
     <main className="simple-page">
@@ -92,36 +122,86 @@ export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
         )}
 
         {trip && (
-          <article className="trip-details-card">
-            <div className="trip-details-hero">
-              <p className="eyebrow">Destination</p>
-              <h3>{trip.destination}</h3>
-              <p>{trip.userMessage}</p>
-            </div>
+          <>
+            <article className="trip-details-card">
+              <div className="trip-details-hero">
+                <p className="eyebrow">Destination</p>
+                <h3>{trip.destination}</h3>
+                <p>{trip.userMessage}</p>
+              </div>
 
-            <div className="details-grid">
-              <div>
-                <span>Origin</span>
-                <strong>{trip.origin}</strong>
+              <div className="details-grid">
+                <div>
+                  <span>Origin</span>
+                  <strong>{trip.origin}</strong>
+                </div>
+                <div>
+                  <span>Destination</span>
+                  <strong>{trip.destination}</strong>
+                </div>
+                <div>
+                  <span>Budget</span>
+                  <strong>${trip.budget.toLocaleString()}</strong>
+                </div>
+                <div>
+                  <span>Days</span>
+                  <strong>{trip.days}</strong>
+                </div>
+                <div>
+                  <span>Created</span>
+                  <strong>{formatDate(trip.createdAt)}</strong>
+                </div>
               </div>
-              <div>
-                <span>Destination</span>
-                <strong>{trip.destination}</strong>
+            </article>
+
+            <section className="trip-notes-card" aria-labelledby="trip-notes">
+              <div className="notes-header">
+                <div>
+                  <p className="eyebrow">Notes</p>
+                  <h3 id="trip-notes">Trip notes</h3>
+                </div>
               </div>
-              <div>
-                <span>Budget</span>
-                <strong>${trip.budget.toLocaleString()}</strong>
+
+              <form className="notes-form" onSubmit={handleNoteSubmit}>
+                <label htmlFor="trip-note-content">Add a note</label>
+                <textarea
+                  id="trip-note-content"
+                  onChange={(event) => setNoteContent(event.target.value)}
+                  placeholder="Add a reminder, idea, or comment for this trip"
+                  rows={3}
+                  value={noteContent}
+                />
+                <div className="form-actions">
+                  <button
+                    className="primary-button"
+                    disabled={isSavingNote || !noteContent.trim()}
+                    type="submit"
+                  >
+                    {isSavingNote ? "Saving..." : "Save Note"}
+                  </button>
+                </div>
+              </form>
+
+              {noteError && (
+                <p className="preferences-message error-text">{noteError}</p>
+              )}
+
+              <div className="notes-list">
+                {savedNotes.length === 0 ? (
+                  <p className="notes-empty">No notes saved yet.</p>
+                ) : (
+                  savedNotes.map((note) => (
+                    <article className="note-item" key={note.id}>
+                      <p>{note.content}</p>
+                      <time dateTime={note.createdAt}>
+                        {formatDate(note.createdAt)}
+                      </time>
+                    </article>
+                  ))
+                )}
               </div>
-              <div>
-                <span>Days</span>
-                <strong>{trip.days}</strong>
-              </div>
-              <div>
-                <span>Created</span>
-                <strong>{formatDate(trip.createdAt)}</strong>
-              </div>
-            </div>
-          </article>
+            </section>
+          </>
         )}
       </Container>
     </main>

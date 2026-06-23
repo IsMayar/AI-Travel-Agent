@@ -52,6 +52,17 @@ export interface SavedTrip {
   updatedAt: string;
 }
 
+export interface TripNoteRequest {
+  content: string;
+}
+
+export interface TripNote {
+  id: number;
+  tripId: number;
+  content: string;
+  createdAt: string;
+}
+
 export interface TripStatsResponse {
   totalTrips: number;
   favoriteTrips: number;
@@ -130,6 +141,19 @@ export const tripsApi = api.injectEndpoints({
       }),
       invalidatesTags: [{ type: "SavedTrips", id: "LIST" }],
     }),
+    addTripNote: builder.mutation<
+      TripNote,
+      { tripId: number; note: TripNoteRequest }
+    >({
+      query: ({ tripId, note }) => ({
+        url: `/api/trips/${tripId}/notes`,
+        method: "POST",
+        body: note,
+      }),
+      invalidatesTags: (_result, _error, { tripId }) => [
+        { type: "SavedTrips", id: tripId },
+      ],
+    }),
     getSavedTrips: builder.query<SavedTrip[], { favorite?: boolean } | void>({
       query: (args) => ({
         url: "/api/trips",
@@ -197,6 +221,7 @@ export const tripsApi = api.injectEndpoints({
 });
 
 export const {
+  useAddTripNoteMutation,
   useDeleteSavedTripMutation,
   useDuplicateSavedTripMutation,
   useGetRecentTripsQuery,

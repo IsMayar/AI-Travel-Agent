@@ -1063,6 +1063,67 @@ textarea:focus {
   font-size: 1.02rem;
 }
 
+.trip-notes-card {
+  display: grid;
+  gap: 18px;
+  margin-top: 22px;
+  border: 1px solid rgba(30, 51, 61, 0.1);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 20px 45px rgba(27, 40, 54, 0.08);
+  padding: 24px;
+}
+
+.notes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid rgba(30, 51, 61, 0.1);
+  padding-bottom: 16px;
+}
+
+.notes-header h3 {
+  margin-bottom: 0;
+}
+
+.notes-form {
+  display: grid;
+  gap: 12px;
+}
+
+.notes-form label {
+  color: #243241;
+  font-weight: 800;
+}
+
+.notes-list {
+  display: grid;
+  gap: 12px;
+}
+
+.note-item {
+  border-radius: 8px;
+  background: #f5faf8;
+  padding: 14px;
+}
+
+.note-item p {
+  margin-bottom: 8px;
+  color: #243241;
+}
+
+.note-item time,
+.notes-empty {
+  color: #5b6876;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.notes-empty {
+  margin: 0;
+}
+
 .site-footer {
   border-top: 1px solid rgba(30, 51, 61, 0.08);
   background: #172332;
