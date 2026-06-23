@@ -6,9 +6,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.aitravelagent.dto.SavedTripRequest;
@@ -41,13 +44,42 @@ public class TripController {
     }
 
     @GetMapping
-    public List<SavedTripResponse> getTrips() {
-        return savedTripService.getSavedTrips();
+    public List<SavedTripResponse> getTrips(@RequestParam(required = false) Boolean favorite) {
+        return savedTripService.getAllTrips(favorite);
+    }
+
+    @GetMapping("/search")
+    public List<SavedTripResponse> searchTrips(@RequestParam(defaultValue = "") String q) {
+        return savedTripService.searchTrips(q);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<SavedTripResponse> getTrip(@PathVariable Long id) {
         return savedTripService.getTripById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<SavedTripResponse> updateTrip(
+            @PathVariable Long id,
+            @RequestBody SavedTripRequest request
+    ) {
+        return savedTripService.updateTrip(id, request)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PatchMapping("/{id}/favorite")
+    public ResponseEntity<SavedTripResponse> toggleFavorite(@PathVariable Long id) {
+        return savedTripService.toggleFavorite(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/{id}/duplicate")
+    public ResponseEntity<SavedTripResponse> duplicateTrip(@PathVariable Long id) {
+        return savedTripService.duplicateTrip(id)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }

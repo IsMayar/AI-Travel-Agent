@@ -16,7 +16,7 @@ public class CorsConfig implements WebMvcConfigurer {
                         "http://localhost:5175",
                         "http://127.0.0.1:5175"
                 )
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                 .allowedHeaders("*");
     }
 }

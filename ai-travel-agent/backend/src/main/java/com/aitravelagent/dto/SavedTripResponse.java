@@ -9,6 +9,8 @@ public record SavedTripResponse(
         String destination,
         int budget,
         int days,
-        Instant createdAt
+        boolean favorite,
+        Instant createdAt,
+        Instant updatedAt
 ) {
 }

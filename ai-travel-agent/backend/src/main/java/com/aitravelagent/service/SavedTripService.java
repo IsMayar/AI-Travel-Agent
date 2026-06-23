@@ -1,5 +1,6 @@
 package com.aitravelagent.service;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,12 +31,17 @@ public class SavedTripService {
         savedTrip.setDestination(defaultString(safeRequest.destination(), "Dubai"));
         savedTrip.setBudget(safeRequest.budget() > 0 ? safeRequest.budget() : 1500);
         savedTrip.setDays(safeRequest.days() > 0 ? safeRequest.days() : 7);
+        savedTrip.setFavorite(false);
 
         return toResponse(savedTripRepository.save(savedTrip));
     }
 
-    public List<SavedTripResponse> getSavedTrips() {
-        return savedTripRepository.findAllByOrderByCreatedAtDesc()
+    public List<SavedTripResponse> getAllTrips(Boolean favorite) {
+        List<SavedTrip> savedTrips = favorite == null
+                ? savedTripRepository.findAllByOrderByCreatedAtDesc()
+                : savedTripRepository.findAllByFavoriteStatusOrderByCreatedAtDesc(favorite);
+
+        return savedTrips
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -50,6 +56,79 @@ public class SavedTripService {
                 .map(this::toResponse);
     }
 
+    public Optional<SavedTripResponse> updateTrip(Long id, SavedTripRequest request) {
+        if (id == null) {
+            return Optional.empty();
+        }
+
+        return savedTripRepository.findById(id)
+                .map(savedTrip -> {
+                    SavedTripRequest safeRequest = request == null
+                            ? new SavedTripRequest(null, null, null, 0, 0)
+                            : request;
+
+                    savedTrip.setUserMessage(defaultString(
+                            safeRequest.userMessage(),
+                            defaultString(savedTrip.getUserMessage(), "Trip plan request")
+                    ));
+                    savedTrip.setOrigin(defaultString(
+                            safeRequest.origin(),
+                            defaultString(savedTrip.getOrigin(), "Austin")
+                    ));
+                    savedTrip.setDestination(defaultString(
+                            safeRequest.destination(),
+                            defaultString(savedTrip.getDestination(), "Dubai")
+                    ));
+                    savedTrip.setBudget(safeRequest.budget() > 0 ? safeRequest.budget() : savedTrip.getBudget());
+                    savedTrip.setDays(safeRequest.days() > 0 ? safeRequest.days() : savedTrip.getDays());
+
+                    return toResponse(savedTripRepository.save(savedTrip));
+                });
+    }
+
+    public Optional<SavedTripResponse> toggleFavorite(Long id) {
+        if (id == null) {
+            return Optional.empty();
+        }
+
+        return savedTripRepository.findById(id)
+                .map(savedTrip -> {
+                    savedTrip.setFavorite(!savedTrip.isFavorite());
+                    return toResponse(savedTripRepository.save(savedTrip));
+                });
+    }
+
+    public Optional<SavedTripResponse> duplicateTrip(Long id) {
+        if (id == null) {
+            return Optional.empty();
+        }
+
+        return savedTripRepository.findById(id)
+                .map(savedTrip -> {
+                    SavedTrip duplicate = new SavedTrip();
+                    duplicate.setUserMessage(defaultString(savedTrip.getUserMessage(), "Trip plan request"));
+                    duplicate.setOrigin(defaultString(savedTrip.getOrigin(), "Austin"));
+                    duplicate.setDestination(defaultString(savedTrip.getDestination(), "Dubai"));
+                    duplicate.setBudget(savedTrip.getBudget() > 0 ? savedTrip.getBudget() : 1500);
+                    duplicate.setDays(savedTrip.getDays() > 0 ? savedTrip.getDays() : 7);
+                    duplicate.setFavorite(savedTrip.isFavorite());
+
+                    return toResponse(savedTripRepository.save(duplicate));
+                });
+    }
+
+    public List<SavedTripResponse> searchTrips(String query) {
+        if (query == null || query.isBlank()) {
+            return getAllTrips(null);
+        }
+
+        String trimmedQuery = query.trim();
+        return savedTripRepository.searchTrips(trimmedQuery)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
     public boolean deleteTripById(Long id) {
         if (id == null || !savedTripRepository.existsById(id)) {
             return false;
@@ -60,14 +139,23 @@ public class SavedTripService {
     }
 
     private SavedTripResponse toResponse(SavedTrip savedTrip) {
+        Instant createdAt = savedTrip.getCreatedAt();
+        Instant updatedAt = savedTrip.getUpdatedAt();
+        Instant safeCreatedAt = createdAt != null
+                ? createdAt
+                : Optional.ofNullable(updatedAt).orElseGet(Instant::now);
+        Instant safeUpdatedAt = updatedAt != null ? updatedAt : safeCreatedAt;
+
         return new SavedTripResponse(
                 savedTrip.getId(),
-                savedTrip.getUserMessage(),
-                savedTrip.getOrigin(),
-                savedTrip.getDestination(),
-                savedTrip.getBudget(),
-                savedTrip.getDays(),
-                savedTrip.getCreatedAt()
+                defaultString(savedTrip.getUserMessage(), "Trip plan request"),
+                defaultString(savedTrip.getOrigin(), "Austin"),
+                defaultString(savedTrip.getDestination(), "Dubai"),
+                savedTrip.getBudget() > 0 ? savedTrip.getBudget() : 1500,
+                savedTrip.getDays() > 0 ? savedTrip.getDays() : 7,
+                savedTrip.isFavorite(),
+                safeCreatedAt,
+                safeUpdatedAt
         );
     }
 

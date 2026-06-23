@@ -8,6 +8,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 @Entity
@@ -33,8 +34,13 @@ public class SavedTrip {
     @Column(nullable = false)
     private int days;
 
-    @Column(nullable = false, updatable = false)
+    @Column(columnDefinition = "boolean default false")
+    private Boolean favorite = false;
+
+    @Column(updatable = false)
     private Instant createdAt;
+
+    private Instant updatedAt;
 
     public Long getId() {
         return id;
@@ -80,12 +86,48 @@ public class SavedTrip {
         this.days = days;
     }
 
+    public boolean isFavorite() {
+        return Boolean.TRUE.equals(favorite);
+    }
+
+    public void setFavorite(boolean favorite) {
+        this.favorite = favorite;
+    }
+
+    public void setFavorite(Boolean favorite) {
+        this.favorite = favorite;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
 
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
     @PrePersist
-    void setCreatedAt() {
-        createdAt = Instant.now();
+    void setTimestampsOnCreate() {
+        Instant now = Instant.now();
+        if (favorite == null) {
+            favorite = false;
+        }
+        if (createdAt == null) {
+            createdAt = now;
+        }
+        if (updatedAt == null) {
+            updatedAt = createdAt;
+        }
+    }
+
+    @PreUpdate
+    void setUpdatedAtOnUpdate() {
+        if (favorite == null) {
+            favorite = false;
+        }
+        if (createdAt == null) {
+            createdAt = Instant.now();
+        }
+        updatedAt = Instant.now();
     }
 }
