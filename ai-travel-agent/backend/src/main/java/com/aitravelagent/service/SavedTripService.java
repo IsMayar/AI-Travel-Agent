@@ -240,6 +240,19 @@ public class SavedTripService {
                 });
     }
 
+    public Optional<List<TripNoteResponse>> getNotesForTrip(Long tripId) {
+        if (tripId == null || !savedTripRepository.existsById(tripId)) {
+            return Optional.empty();
+        }
+
+        List<TripNoteResponse> notes = tripNoteRepository.findByTripIdOrderByCreatedAtDesc(tripId)
+                .stream()
+                .map(note -> toNoteResponse(note, tripId))
+                .toList();
+
+        return Optional.of(notes);
+    }
+
     @Transactional
     public boolean deleteTripById(Long id) {
         if (id == null || !savedTripRepository.existsById(id)) {
@@ -273,7 +286,11 @@ public class SavedTripService {
     }
 
     private TripNoteResponse toNoteResponse(TripNote note) {
-        Long tripId = note.getTrip() == null ? null : note.getTrip().getId();
+        return toNoteResponse(note, null);
+    }
+
+    private TripNoteResponse toNoteResponse(TripNote note, Long fallbackTripId) {
+        Long tripId = note.getTrip() == null ? fallbackTripId : note.getTrip().getId();
         Instant createdAt = note.getCreatedAt() == null ? Instant.now() : note.getCreatedAt();
 
         return new TripNoteResponse(

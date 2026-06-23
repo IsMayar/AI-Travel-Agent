@@ -495,6 +495,67 @@ class TripControllerTest {
     }
 
     @Test
+    void getTripNotesReturnsNotesNewestFirst() throws Exception {
+        MvcResult saveResult = mockMvc.perform(post("/api/trips/save")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "userMessage": "Plan a 7-day trip from Austin to Dubai under $1500",
+                                  "origin": "Austin",
+                                  "destination": "Dubai",
+                                  "budget": 1500,
+                                  "days": 7
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Integer id = JsonPath.read(saveResult.getResponse().getContentAsString(), "$.id");
+        insertTripNote(id, "Older note", Instant.parse("2026-01-01T00:00:00Z"));
+        insertTripNote(id, "Newer note", Instant.parse("2026-01-02T00:00:00Z"));
+
+        mockMvc.perform(get("/api/trips/{id}/notes", id))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].tripId").value(id))
+                .andExpect(jsonPath("$[0].content").value("Newer note"))
+                .andExpect(jsonPath("$[0].createdAt").isNotEmpty())
+                .andExpect(jsonPath("$[1].tripId").value(id))
+                .andExpect(jsonPath("$[1].content").value("Older note"));
+    }
+
+    @Test
+    void getTripNotesReturnsEmptyListForTripWithoutNotes() throws Exception {
+        MvcResult saveResult = mockMvc.perform(post("/api/trips/save")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "userMessage": "Plan a weekend trip",
+                                  "origin": "Austin",
+                                  "destination": "Denver",
+                                  "budget": 900,
+                                  "days": 2
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Integer id = JsonPath.read(saveResult.getResponse().getContentAsString(), "$.id");
+
+        mockMvc.perform(get("/api/trips/{id}/notes", id))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void getTripNotesReturnsNotFoundForMissingTrip() throws Exception {
+        mockMvc.perform(get("/api/trips/{id}/notes", 999999L))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void deleteTripRemovesSavedTripWithNotes() throws Exception {
         MvcResult saveResult = mockMvc.perform(post("/api/trips/save")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -687,6 +748,21 @@ class TripControllerTest {
                 budget,
                 favorite,
                 Timestamp.from(createdAt),
+                Timestamp.from(createdAt)
+        );
+    }
+
+    private void insertTripNote(Integer tripId, String content, Instant createdAt) {
+        jdbcTemplate.update("""
+                INSERT INTO trip_notes (
+                  trip_id,
+                  content,
+                  created_at
+                )
+                VALUES (?, ?, ?)
+                """,
+                tripId,
+                content,
                 Timestamp.from(createdAt)
         );
     }

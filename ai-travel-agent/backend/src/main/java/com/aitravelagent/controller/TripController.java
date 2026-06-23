@@ -103,6 +103,13 @@ public class TripController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/{id}/notes")
+    public ResponseEntity<List<TripNoteResponse>> getTripNotes(@PathVariable Long id) {
+        return savedTripService.getNotesForTrip(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
     @PostMapping("/{id}/notes")
     public ResponseEntity<TripNoteResponse> addTripNote(
             @PathVariable Long id,
