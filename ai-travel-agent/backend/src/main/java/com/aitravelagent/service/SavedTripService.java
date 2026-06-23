@@ -1,13 +1,16 @@
 package com.aitravelagent.service;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
 import com.aitravelagent.dto.SavedTripRequest;
 import com.aitravelagent.dto.SavedTripResponse;
+import com.aitravelagent.dto.TripStatsResponse;
 import com.aitravelagent.entity.SavedTrip;
 import com.aitravelagent.repository.SavedTripRepository;
 
@@ -52,6 +55,26 @@ public class SavedTripService {
                 .stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    public TripStatsResponse getTripStats() {
+        List<SavedTrip> savedTrips = savedTripRepository.findAllByOrderByCreatedAtDesc();
+        long totalTrips = savedTrips.size();
+        long favoriteTrips = savedTrips.stream()
+                .filter(SavedTrip::isFavorite)
+                .count();
+        double averageBudget = savedTrips.stream()
+                .mapToInt(savedTrip -> savedTrip.getBudget() > 0 ? savedTrip.getBudget() : 1500)
+                .average()
+                .orElse(0);
+        String mostCommonDestination = findMostCommonDestination(savedTrips);
+
+        return new TripStatsResponse(
+                totalTrips,
+                favoriteTrips,
+                averageBudget,
+                mostCommonDestination
+        );
     }
 
     public Optional<SavedTripResponse> getTripById(Long id) {
@@ -171,5 +194,25 @@ public class SavedTripService {
             return defaultValue;
         }
         return value.trim();
+    }
+
+    private String findMostCommonDestination(List<SavedTrip> savedTrips) {
+        Map<String, Long> destinationCounts = new LinkedHashMap<>();
+
+        for (SavedTrip savedTrip : savedTrips) {
+            String destination = defaultString(savedTrip.getDestination(), "Dubai");
+            destinationCounts.put(destination, destinationCounts.getOrDefault(destination, 0L) + 1);
+        }
+
+        String mostCommonDestination = "";
+        long highestCount = 0;
+        for (Map.Entry<String, Long> entry : destinationCounts.entrySet()) {
+            if (entry.getValue() > highestCount) {
+                mostCommonDestination = entry.getKey();
+                highestCount = entry.getValue();
+            }
+        }
+
+        return mostCommonDestination;
     }
 }

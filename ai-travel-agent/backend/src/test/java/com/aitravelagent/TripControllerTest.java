@@ -266,6 +266,52 @@ class TripControllerTest {
     }
 
     @Test
+    void getTripStatsReturnsSavedTripSummary() throws Exception {
+        insertSavedTrip(
+                "First Dubai plan",
+                "Austin",
+                "Dubai",
+                1000,
+                false,
+                Instant.parse("2026-01-01T00:00:00Z")
+        );
+        insertSavedTrip(
+                "Second Dubai plan",
+                "Dallas",
+                "Dubai",
+                2000,
+                true,
+                Instant.parse("2026-01-02T00:00:00Z")
+        );
+        insertSavedTrip(
+                "Tokyo plan",
+                "Seattle",
+                "Tokyo",
+                3000,
+                true,
+                Instant.parse("2026-01-03T00:00:00Z")
+        );
+
+        mockMvc.perform(get("/api/trips/stats"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.totalTrips").value(3))
+                .andExpect(jsonPath("$.favoriteTrips").value(2))
+                .andExpect(jsonPath("$.averageBudget").value(2000.0))
+                .andExpect(jsonPath("$.mostCommonDestination").value("Dubai"));
+    }
+
+    @Test
+    void getTripStatsReturnsDefaultsWhenNoTripsExist() throws Exception {
+        mockMvc.perform(get("/api/trips/stats"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalTrips").value(0))
+                .andExpect(jsonPath("$.favoriteTrips").value(0))
+                .andExpect(jsonPath("$.averageBudget").value(0.0))
+                .andExpect(jsonPath("$.mostCommonDestination").value(""));
+    }
+
+    @Test
     void getTripsHandlesLegacyRowsWithNullFavoriteAndUpdatedAt() throws Exception {
         jdbcTemplate.update("""
                 INSERT INTO saved_trips (
@@ -467,6 +513,17 @@ class TripControllerTest {
     }
 
     private void insertSavedTrip(String userMessage, String origin, String destination, Instant createdAt) {
+        insertSavedTrip(userMessage, origin, destination, 1500, false, createdAt);
+    }
+
+    private void insertSavedTrip(
+            String userMessage,
+            String origin,
+            String destination,
+            int budget,
+            boolean favorite,
+            Instant createdAt
+    ) {
         jdbcTemplate.update("""
                 INSERT INTO saved_trips (
                   user_message,
@@ -478,11 +535,13 @@ class TripControllerTest {
                   created_at,
                   updated_at
                 )
-                VALUES (?, ?, ?, 1500, 7, FALSE, ?, ?)
+                VALUES (?, ?, ?, ?, 7, ?, ?, ?)
                 """,
                 userMessage,
                 origin,
                 destination,
+                budget,
+                favorite,
                 Timestamp.from(createdAt),
                 Timestamp.from(createdAt)
         );

@@ -18,6 +18,7 @@ import com.aitravelagent.dto.SavedTripRequest;
 import com.aitravelagent.dto.SavedTripResponse;
 import com.aitravelagent.dto.TripPlanRequest;
 import com.aitravelagent.dto.TripPlanResponse;
+import com.aitravelagent.dto.TripStatsResponse;
 import com.aitravelagent.service.SavedTripService;
 import com.aitravelagent.service.TripPlanService;
 
@@ -56,6 +57,11 @@ public class TripController {
     @GetMapping("/recent")
     public List<SavedTripResponse> getRecentTrips() {
         return savedTripService.getRecentTrips();
+    }
+
+    @GetMapping("/stats")
+    public TripStatsResponse getTripStats() {
+        return savedTripService.getTripStats();
     }
 
     @GetMapping("/{id}")
