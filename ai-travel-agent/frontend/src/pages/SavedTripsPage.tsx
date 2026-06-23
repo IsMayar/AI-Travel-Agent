@@ -1,10 +1,16 @@
+import { useState } from "react";
+
 import { Container } from "../components/Container";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { SectionTitle } from "../components/SectionTitle";
 import { TripCard } from "../components/TripCard";
 import { demoSavedTrips } from "../data/travelData";
-import { useGetSavedTripsQuery } from "../features/trips/tripsApi";
+import {
+  SavedTrip,
+  useDeleteSavedTripMutation,
+  useGetSavedTripsQuery,
+} from "../features/trips/tripsApi";
 
 function SavedTripsSkeleton() {
   return (
@@ -17,8 +23,32 @@ function SavedTripsSkeleton() {
 }
 
 export function SavedTripsPage() {
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletingTripId, setDeletingTripId] = useState<number | null>(null);
   const { data, isError, isLoading, refetch } = useGetSavedTripsQuery();
+  const [deleteSavedTrip] = useDeleteSavedTripMutation();
   const trips = isError ? demoSavedTrips : data ?? [];
+
+  async function handleDeleteTrip(trip: SavedTrip) {
+    const confirmed = window.confirm(
+      `Delete the saved trip from ${trip.origin} to ${trip.destination}?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeleteError(null);
+    setDeletingTripId(trip.id);
+
+    try {
+      await deleteSavedTrip(trip.id).unwrap();
+    } catch {
+      setDeleteError("Could not delete this saved trip. Please try again.");
+    } finally {
+      setDeletingTripId(null);
+    }
+  }
 
   return (
     <main className="simple-page">
@@ -42,6 +72,10 @@ export function SavedTripsPage() {
           />
         )}
 
+        {!isLoading && deleteError && (
+          <ErrorState title="Delete failed" message={deleteError} />
+        )}
+
         {!isLoading && trips.length === 0 && (
           <EmptyState
             actionHref="/planner"
@@ -54,7 +88,12 @@ export function SavedTripsPage() {
         {!isLoading && trips.length > 0 && (
           <div className="saved-trip-grid">
             {trips.map((trip) => (
-              <TripCard key={trip.id} trip={trip} />
+              <TripCard
+                isDeleting={deletingTripId === trip.id}
+                key={trip.id}
+                onDelete={handleDeleteTrip}
+                trip={trip}
+              />
             ))}
           </div>
         )}

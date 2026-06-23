@@ -67,6 +67,16 @@ export const tripsApi = api.injectEndpoints({
       }),
       invalidatesTags: [{ type: "SavedTrips", id: "LIST" }],
     }),
+    deleteSavedTrip: builder.mutation<void, number>({
+      query: (id) => ({
+        url: `/api/trips/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (_result, _error, id) => [
+        { type: "SavedTrips", id },
+        { type: "SavedTrips", id: "LIST" },
+      ],
+    }),
     getSavedTrips: builder.query<SavedTrip[], void>({
       query: () => "/api/trips",
       providesTags: (result) =>
@@ -84,6 +94,7 @@ export const tripsApi = api.injectEndpoints({
 });
 
 export const {
+  useDeleteSavedTripMutation,
   useGetSavedTripsQuery,
   usePlanTripMutation,
   useSaveTripMutation,

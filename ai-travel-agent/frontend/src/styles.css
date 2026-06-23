@@ -211,6 +211,35 @@ li + li {
   transform: translateY(-1px);
 }
 
+.danger-button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(196, 65, 59, 0.22);
+  border-radius: 8px;
+  background: #fff8f7;
+  color: #a4312c;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 0 16px;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.danger-button:hover:not(:disabled) {
+  border-color: rgba(196, 65, 59, 0.44);
+  background: #ffefed;
+  transform: translateY(-1px);
+}
+
+.danger-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+
 .hero-section {
   display: grid;
   min-height: 72vh;
@@ -683,6 +712,11 @@ textarea:focus {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.trip-card-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .site-footer {
