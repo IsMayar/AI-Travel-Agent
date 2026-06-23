@@ -10,9 +10,11 @@ import { demoSavedTrips } from "../data/travelData";
 import {
   SaveTripRequest,
   SavedTrip,
+  TripStatsResponse,
   useDuplicateSavedTripMutation,
   useDeleteSavedTripMutation,
   useGetSavedTripsQuery,
+  useGetTripStatsQuery,
   useSearchSavedTripsQuery,
   useToggleFavoriteTripMutation,
   useUpdateSavedTripMutation,
@@ -35,6 +37,40 @@ function SavedTripsSkeleton() {
   );
 }
 
+const currencyFormatter = new Intl.NumberFormat("en", {
+  currency: "USD",
+  maximumFractionDigits: 0,
+  style: "currency",
+});
+
+function buildTripStats(trips: SavedTrip[]): TripStatsResponse {
+  const destinationCounts = new Map<string, number>();
+  const totalBudget = trips.reduce((sum, trip) => sum + trip.budget, 0);
+
+  trips.forEach((trip) => {
+    destinationCounts.set(
+      trip.destination,
+      (destinationCounts.get(trip.destination) ?? 0) + 1
+    );
+  });
+
+  let mostCommonDestination = "";
+  let highestCount = 0;
+  destinationCounts.forEach((count, destination) => {
+    if (count > highestCount) {
+      mostCommonDestination = destination;
+      highestCount = count;
+    }
+  });
+
+  return {
+    totalTrips: trips.length,
+    favoriteTrips: trips.filter((trip) => trip.favorite).length,
+    averageBudget: trips.length ? totalBudget / trips.length : 0,
+    mostCommonDestination,
+  };
+}
+
 export function SavedTripsPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [activeAction, setActiveAction] = useState<ActiveAction | null>(null);
@@ -46,6 +82,7 @@ export function SavedTripsPage() {
     favoriteOnly ? { favorite: true } : undefined,
     { skip: trimmedSearch.length > 0 }
   );
+  const tripStatsQuery = useGetTripStatsQuery();
   const searchTripsQuery = useSearchSavedTripsQuery(trimmedSearch, {
     skip: trimmedSearch.length === 0,
   });
@@ -71,6 +108,9 @@ export function SavedTripsPage() {
     : favoriteOnly && trimmedSearch
       ? serverTrips.filter((trip) => trip.favorite)
       : serverTrips;
+  const tripStats = tripStatsQuery.isError
+    ? buildTripStats(demoSavedTrips)
+    : tripStatsQuery.data;
 
   function isActionLoading(trip: SavedTrip, type: TripAction) {
     return activeAction?.id === trip.id && activeAction.type === type;
@@ -146,6 +186,42 @@ export function SavedTripsPage() {
           title="Your trip ideas"
           description="Saved backend trips appear here. If the backend is offline, the page shows demo trips instead."
         />
+
+        {tripStatsQuery.isLoading && (
+          <div className="stats-grid" aria-label="Loading trip stats">
+            <div className="stats-card loading-stat" />
+            <div className="stats-card loading-stat" />
+            <div className="stats-card loading-stat" />
+            <div className="stats-card loading-stat" />
+          </div>
+        )}
+
+        {!tripStatsQuery.isLoading && tripStatsQuery.isError && (
+          <p className="stats-note">
+            Backend trip stats are unavailable, so demo stats are shown for now.
+          </p>
+        )}
+
+        {!tripStatsQuery.isLoading && tripStats && (
+          <div className="stats-grid" aria-label="Saved trip stats">
+            <div className="stats-card">
+              <span>Total trips</span>
+              <strong>{tripStats.totalTrips.toLocaleString()}</strong>
+            </div>
+            <div className="stats-card">
+              <span>Favorites</span>
+              <strong>{tripStats.favoriteTrips.toLocaleString()}</strong>
+            </div>
+            <div className="stats-card">
+              <span>Average budget</span>
+              <strong>{currencyFormatter.format(tripStats.averageBudget)}</strong>
+            </div>
+            <div className="stats-card">
+              <span>Top destination</span>
+              <strong>{tripStats.mostCommonDestination || "None yet"}</strong>
+            </div>
+          </div>
+        )}
 
         <div className="saved-toolbar">
           <label className="search-field">

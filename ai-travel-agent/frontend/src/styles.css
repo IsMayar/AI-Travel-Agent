@@ -800,6 +800,51 @@ textarea:focus {
   margin: 0;
 }
 
+.stats-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 22px;
+}
+
+.stats-card {
+  min-height: 118px;
+  border: 1px solid rgba(30, 51, 61, 0.1);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 14px 32px rgba(27, 40, 54, 0.08);
+  padding: 18px;
+}
+
+.stats-card span {
+  display: block;
+  margin-bottom: 10px;
+  color: #5b6876;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.stats-card strong {
+  color: #172332;
+  font-size: 1.7rem;
+}
+
+.stats-note {
+  border-radius: 8px;
+  background: #f5faf8;
+  color: #5b6876;
+  margin: 0 0 16px;
+  padding: 14px 16px;
+}
+
+.loading-stat {
+  background:
+    linear-gradient(90deg, #eef3f2 25%, #f8fbfa 37%, #eef3f2 63%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite linear;
+}
+
 .saved-toolbar {
   display: grid;
   align-items: end;
@@ -995,6 +1040,7 @@ textarea:focus {
   .feature-grid,
   .destination-grid,
   .saved-trip-grid,
+  .stats-grid,
   .results-layout,
   .details-grid,
   .skeleton-grid {
@@ -1062,6 +1108,7 @@ textarea:focus {
   .feature-grid,
   .destination-grid,
   .saved-trip-grid,
+  .stats-grid,
   .results-layout,
   .details-grid,
   .skeleton-grid {
