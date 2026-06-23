@@ -1,6 +1,7 @@
 package com.aitravelagent;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -11,12 +12,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-class TripPlanControllerTest {
+class TripControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -84,17 +87,35 @@ class TripPlanControllerTest {
     }
 
     @Test
-    void planTripAllowsLocalhostFrontendCors() throws Exception {
-        mockMvc.perform(post("/api/trips/plan")
-                        .header("Origin", "http://localhost:5173")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "message": "Plan a 7-day trip from Austin to Dubai under $1500"
-                                }
-                                """))
+    void apiCorsAllowsConfiguredFrontendOrigins() throws Exception {
+        String[] origins = {
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "http://localhost:5175",
+                "http://127.0.0.1:5175"
+        };
+
+        for (String origin : origins) {
+            mockMvc.perform(get("/api/trips")
+                            .header(HttpHeaders.ORIGIN, origin))
+                    .andExpect(status().isOk())
+                    .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, origin));
+        }
+    }
+
+    @Test
+    void apiCorsAllowsConfiguredMethodsAndHeaders() throws Exception {
+        mockMvc.perform(options("/api/trips/plan")
+                        .header(HttpHeaders.ORIGIN, "http://localhost:5175")
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, HttpMethod.POST.name())
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "content-type"))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"));
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:5175"))
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, "content-type"))
+                .andExpect(header().string(
+                        HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS,
+                        "GET,POST,PUT,DELETE,OPTIONS"
+                ));
     }
 
     @Test
