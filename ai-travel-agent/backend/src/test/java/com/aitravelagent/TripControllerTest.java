@@ -41,6 +41,7 @@ class TripControllerTest {
 
     @BeforeEach
     void cleanDatabase() {
+        jdbcTemplate.update("DELETE FROM travel_preferences");
         jdbcTemplate.update("DELETE FROM saved_trips");
     }
 
@@ -309,6 +310,61 @@ class TripControllerTest {
                 .andExpect(jsonPath("$.favoriteTrips").value(0))
                 .andExpect(jsonPath("$.averageBudget").value(0.0))
                 .andExpect(jsonPath("$.mostCommonDestination").value(""));
+    }
+
+    @Test
+    void recommendTripsReturnsDefaultsWhenNoPreferencesOrSavedTripsExist() throws Exception {
+        mockMvc.perform(post("/api/trips/recommendations"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.recommendations.length()").value(3))
+                .andExpect(jsonPath("$.recommendations[0].origin").value("Austin"))
+                .andExpect(jsonPath("$.recommendations[0].destination").value("Dubai"))
+                .andExpect(jsonPath("$.recommendations[0].budget").value(1500))
+                .andExpect(jsonPath("$.recommendations[0].days").value(7))
+                .andExpect(jsonPath("$.recommendations[0].travelStyle").value("Relaxed"));
+    }
+
+    @Test
+    void recommendTripsUsesPreferencesAndSavedTrips() throws Exception {
+        mockMvc.perform(put("/api/preferences")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "preferredBudget": 2200,
+                                  "preferredDuration": 6,
+                                  "preferredTravelStyle": "Adventure",
+                                  "preferredDestination": "Lisbon"
+                                }
+                                """))
+                .andExpect(status().isOk());
+        insertSavedTrip(
+                "Recent Tokyo trip",
+                "Austin",
+                "Tokyo",
+                1800,
+                false,
+                Instant.parse("2026-01-03T00:00:00Z")
+        );
+        insertSavedTrip(
+                "Older Tokyo trip",
+                "Dallas",
+                "Tokyo",
+                1900,
+                false,
+                Instant.parse("2026-01-02T00:00:00Z")
+        );
+
+        mockMvc.perform(post("/api/trips/recommendations"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recommendations.length()").value(3))
+                .andExpect(jsonPath("$.recommendations[0].origin").value("Austin"))
+                .andExpect(jsonPath("$.recommendations[0].destination").value("Lisbon"))
+                .andExpect(jsonPath("$.recommendations[0].budget").value(2200))
+                .andExpect(jsonPath("$.recommendations[0].days").value(6))
+                .andExpect(jsonPath("$.recommendations[0].travelStyle").value("Adventure"))
+                .andExpect(jsonPath("$.recommendations[1].destination").value("Tokyo"))
+                .andExpect(jsonPath("$.recommendations[2].destination").value("Cape Town"));
     }
 
     @Test

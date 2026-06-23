@@ -1,6 +1,7 @@
 package com.aitravelagent.service;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -10,6 +11,9 @@ import org.springframework.stereotype.Service;
 
 import com.aitravelagent.dto.SavedTripRequest;
 import com.aitravelagent.dto.SavedTripResponse;
+import com.aitravelagent.dto.TravelPreferencesResponse;
+import com.aitravelagent.dto.TripRecommendationResponse;
+import com.aitravelagent.dto.TripRecommendationsResponse;
 import com.aitravelagent.dto.TripStatsResponse;
 import com.aitravelagent.entity.SavedTrip;
 import com.aitravelagent.repository.SavedTripRepository;
@@ -18,9 +22,14 @@ import com.aitravelagent.repository.SavedTripRepository;
 public class SavedTripService {
 
     private final SavedTripRepository savedTripRepository;
+    private final TravelPreferencesService travelPreferencesService;
 
-    public SavedTripService(SavedTripRepository savedTripRepository) {
+    public SavedTripService(
+            SavedTripRepository savedTripRepository,
+            TravelPreferencesService travelPreferencesService
+    ) {
         this.savedTripRepository = savedTripRepository;
+        this.travelPreferencesService = travelPreferencesService;
     }
 
     public SavedTripResponse saveTrip(SavedTripRequest request) {
@@ -75,6 +84,52 @@ public class SavedTripService {
                 averageBudget,
                 mostCommonDestination
         );
+    }
+
+    public TripRecommendationsResponse getTripRecommendations() {
+        List<SavedTrip> savedTrips = savedTripRepository.findAllByOrderByCreatedAtDesc();
+        TravelPreferencesResponse preferences = travelPreferencesService.getPreferences();
+        String origin = findRecentOrigin(savedTrips);
+        String travelStyle = defaultString(preferences.preferredTravelStyle(), "Relaxed");
+        int budget = preferences.preferredBudget() > 0
+                ? preferences.preferredBudget()
+                : averageBudget(savedTrips);
+        int days = preferences.preferredDuration() > 0
+                ? preferences.preferredDuration()
+                : averageDays(savedTrips);
+        List<String> destinations = new ArrayList<>();
+
+        addDestination(destinations, preferences.preferredDestination());
+        addDestination(destinations, findMostCommonDestination(savedTrips));
+        addDestination(destinations, destinationForTravelStyle(travelStyle));
+
+        for (SavedTrip savedTrip : savedTrips) {
+            addDestination(destinations, savedTrip.getDestination());
+            if (destinations.size() == 3) {
+                break;
+            }
+        }
+
+        for (String destination : List.of("Dubai", "Tokyo", "Paris", "Lisbon", "Seoul")) {
+            addDestination(destinations, destination);
+            if (destinations.size() == 3) {
+                break;
+            }
+        }
+
+        List<TripRecommendationResponse> recommendations = new ArrayList<>();
+        for (int index = 0; index < 3; index++) {
+            recommendations.add(new TripRecommendationResponse(
+                    origin,
+                    destinations.get(index),
+                    budget + (index * 150),
+                    days + index,
+                    travelStyle,
+                    recommendationReason(index)
+            ));
+        }
+
+        return new TripRecommendationsResponse(recommendations);
     }
 
     public Optional<SavedTripResponse> getTripById(Long id) {
@@ -214,5 +269,71 @@ public class SavedTripService {
         }
 
         return mostCommonDestination;
+    }
+
+    private String findRecentOrigin(List<SavedTrip> savedTrips) {
+        return savedTrips.stream()
+                .map(SavedTrip::getOrigin)
+                .filter(origin -> origin != null && !origin.isBlank())
+                .findFirst()
+                .map(String::trim)
+                .orElse("Austin");
+    }
+
+    private int averageBudget(List<SavedTrip> savedTrips) {
+        return (int) Math.round(savedTrips.stream()
+                .mapToInt(savedTrip -> savedTrip.getBudget() > 0 ? savedTrip.getBudget() : 1500)
+                .average()
+                .orElse(1500));
+    }
+
+    private int averageDays(List<SavedTrip> savedTrips) {
+        return (int) Math.round(savedTrips.stream()
+                .mapToInt(savedTrip -> savedTrip.getDays() > 0 ? savedTrip.getDays() : 7)
+                .average()
+                .orElse(7));
+    }
+
+    private void addDestination(List<String> destinations, String destination) {
+        String safeDestination = defaultString(destination, "");
+        if (safeDestination.isBlank()) {
+            return;
+        }
+
+        boolean alreadyAdded = destinations.stream()
+                .anyMatch(existingDestination -> existingDestination.equalsIgnoreCase(safeDestination));
+        if (!alreadyAdded) {
+            destinations.add(safeDestination);
+        }
+    }
+
+    private String destinationForTravelStyle(String travelStyle) {
+        String safeStyle = defaultString(travelStyle, "Relaxed").toLowerCase();
+
+        if (safeStyle.contains("adventure")) {
+            return "Cape Town";
+        }
+        if (safeStyle.contains("culture")) {
+            return "Kyoto";
+        }
+        if (safeStyle.contains("family")) {
+            return "Orlando";
+        }
+        if (safeStyle.contains("luxury")) {
+            return "Maldives";
+        }
+        if (safeStyle.contains("budget")) {
+            return "Lisbon";
+        }
+
+        return "Bali";
+    }
+
+    private String recommendationReason(int index) {
+        return switch (index) {
+            case 0 -> "Matches your saved travel preferences.";
+            case 1 -> "Inspired by your saved trip history.";
+            default -> "A mock idea for your preferred travel style.";
+        };
     }
 }
