@@ -41,6 +41,7 @@ class TripControllerTest {
 
     @BeforeEach
     void cleanDatabase() {
+        jdbcTemplate.update("DELETE FROM trip_notes");
         jdbcTemplate.update("DELETE FROM travel_preferences");
         jdbcTemplate.update("DELETE FROM saved_trips");
     }
@@ -446,6 +447,83 @@ class TripControllerTest {
     void getTripReturnsNotFoundForMissingTrip() throws Exception {
         mockMvc.perform(get("/api/trips/{id}", 999999L))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void addTripNoteCreatesNoteForSavedTrip() throws Exception {
+        MvcResult saveResult = mockMvc.perform(post("/api/trips/save")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "userMessage": "Plan a 5-day trip from Austin to Dubai under $1500",
+                                  "origin": "Austin",
+                                  "destination": "Dubai",
+                                  "budget": 1500,
+                                  "days": 5
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Integer id = JsonPath.read(saveResult.getResponse().getContentAsString(), "$.id");
+
+        mockMvc.perform(post("/api/trips/{id}/notes", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "content": "Ask for a hotel near the metro."
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id").isNumber())
+                .andExpect(jsonPath("$.tripId").value(id))
+                .andExpect(jsonPath("$.content").value("Ask for a hotel near the metro."))
+                .andExpect(jsonPath("$.createdAt").isNotEmpty());
+    }
+
+    @Test
+    void addTripNoteReturnsNotFoundForMissingTrip() throws Exception {
+        mockMvc.perform(post("/api/trips/{id}/notes", 999999L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "content": "This note should not be saved."
+                                }
+                                """))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deleteTripRemovesSavedTripWithNotes() throws Exception {
+        MvcResult saveResult = mockMvc.perform(post("/api/trips/save")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "userMessage": "Plan a 4-day trip from Austin to Denver under $900",
+                                  "origin": "Austin",
+                                  "destination": "Denver",
+                                  "budget": 900,
+                                  "days": 4
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Integer id = JsonPath.read(saveResult.getResponse().getContentAsString(), "$.id");
+
+        mockMvc.perform(post("/api/trips/{id}/notes", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "content": "Check hotel cancellation policy."
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/api/trips/{id}", id))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
     }
 
     @Test

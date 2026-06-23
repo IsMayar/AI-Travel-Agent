@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.aitravelagent.dto.SavedTripRequest;
 import com.aitravelagent.dto.SavedTripResponse;
+import com.aitravelagent.dto.TripNoteRequest;
+import com.aitravelagent.dto.TripNoteResponse;
 import com.aitravelagent.dto.TripPlanRequest;
 import com.aitravelagent.dto.TripPlanResponse;
 import com.aitravelagent.dto.TripRecommendationsResponse;
@@ -97,6 +99,16 @@ public class TripController {
     @PostMapping("/{id}/duplicate")
     public ResponseEntity<SavedTripResponse> duplicateTrip(@PathVariable Long id) {
         return savedTripService.duplicateTrip(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/{id}/notes")
+    public ResponseEntity<TripNoteResponse> addTripNote(
+            @PathVariable Long id,
+            @RequestBody TripNoteRequest request
+    ) {
+        return savedTripService.addTripNote(id, request)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }

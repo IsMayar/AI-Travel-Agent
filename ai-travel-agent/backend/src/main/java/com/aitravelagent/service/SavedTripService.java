@@ -8,28 +8,36 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.aitravelagent.dto.SavedTripRequest;
 import com.aitravelagent.dto.SavedTripResponse;
 import com.aitravelagent.dto.TravelPreferencesResponse;
+import com.aitravelagent.dto.TripNoteRequest;
+import com.aitravelagent.dto.TripNoteResponse;
 import com.aitravelagent.dto.TripRecommendationResponse;
 import com.aitravelagent.dto.TripRecommendationsResponse;
 import com.aitravelagent.dto.TripStatsResponse;
 import com.aitravelagent.entity.SavedTrip;
+import com.aitravelagent.entity.TripNote;
 import com.aitravelagent.repository.SavedTripRepository;
+import com.aitravelagent.repository.TripNoteRepository;
 
 @Service
 public class SavedTripService {
 
     private final SavedTripRepository savedTripRepository;
     private final TravelPreferencesService travelPreferencesService;
+    private final TripNoteRepository tripNoteRepository;
 
     public SavedTripService(
             SavedTripRepository savedTripRepository,
-            TravelPreferencesService travelPreferencesService
+            TravelPreferencesService travelPreferencesService,
+            TripNoteRepository tripNoteRepository
     ) {
         this.savedTripRepository = savedTripRepository;
         this.travelPreferencesService = travelPreferencesService;
+        this.tripNoteRepository = tripNoteRepository;
     }
 
     public SavedTripResponse saveTrip(SavedTripRequest request) {
@@ -214,11 +222,31 @@ public class SavedTripService {
                 .toList();
     }
 
+    public Optional<TripNoteResponse> addTripNote(Long tripId, TripNoteRequest request) {
+        if (tripId == null) {
+            return Optional.empty();
+        }
+
+        return savedTripRepository.findById(tripId)
+                .map(savedTrip -> {
+                    TripNoteRequest safeRequest = request == null
+                            ? new TripNoteRequest(null)
+                            : request;
+                    TripNote note = new TripNote();
+                    note.setTrip(savedTrip);
+                    note.setContent(defaultString(safeRequest.content(), "Trip note"));
+
+                    return toNoteResponse(tripNoteRepository.save(note));
+                });
+    }
+
+    @Transactional
     public boolean deleteTripById(Long id) {
         if (id == null || !savedTripRepository.existsById(id)) {
             return false;
         }
 
+        tripNoteRepository.deleteByTripId(id);
         savedTripRepository.deleteById(id);
         return true;
     }
@@ -241,6 +269,18 @@ public class SavedTripService {
                 savedTrip.isFavorite(),
                 safeCreatedAt,
                 safeUpdatedAt
+        );
+    }
+
+    private TripNoteResponse toNoteResponse(TripNote note) {
+        Long tripId = note.getTrip() == null ? null : note.getTrip().getId();
+        Instant createdAt = note.getCreatedAt() == null ? Instant.now() : note.getCreatedAt();
+
+        return new TripNoteResponse(
+                note.getId(),
+                tripId,
+                defaultString(note.getContent(), "Trip note"),
+                createdAt
         );
     }
 
