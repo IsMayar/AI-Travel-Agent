@@ -65,9 +65,9 @@ public class TripController {
         return savedTripService.getTripStats();
     }
 
-    @PostMapping("/recommendations")
-    public TripRecommendationsResponse getTripRecommendations() {
-        return savedTripService.getTripRecommendations();
+    @GetMapping("/recommendations")
+    public TripRecommendationsResponse getRecommendations() {
+        return savedTripService.getRecommendations();
     }
 
     @GetMapping("/{id}")

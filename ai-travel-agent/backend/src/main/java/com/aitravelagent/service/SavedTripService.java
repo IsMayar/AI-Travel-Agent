@@ -86,7 +86,7 @@ public class SavedTripService {
         );
     }
 
-    public TripRecommendationsResponse getTripRecommendations() {
+    public TripRecommendationsResponse getRecommendations() {
         List<SavedTrip> savedTrips = savedTripRepository.findAllByOrderByCreatedAtDesc();
         TravelPreferencesResponse preferences = travelPreferencesService.getPreferences();
         String origin = findRecentOrigin(savedTrips);
@@ -336,4 +336,5 @@ public class SavedTripService {
             default -> "A mock idea for your preferred travel style.";
         };
     }
+
 }

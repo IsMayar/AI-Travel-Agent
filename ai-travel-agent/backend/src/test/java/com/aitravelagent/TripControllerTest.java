@@ -313,8 +313,8 @@ class TripControllerTest {
     }
 
     @Test
-    void recommendTripsReturnsDefaultsWhenNoPreferencesOrSavedTripsExist() throws Exception {
-        mockMvc.perform(post("/api/trips/recommendations"))
+    void getRecommendationsReturnsThreeMockTrips() throws Exception {
+        mockMvc.perform(get("/api/trips/recommendations"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.recommendations.length()").value(3))
@@ -322,11 +322,15 @@ class TripControllerTest {
                 .andExpect(jsonPath("$.recommendations[0].destination").value("Dubai"))
                 .andExpect(jsonPath("$.recommendations[0].budget").value(1500))
                 .andExpect(jsonPath("$.recommendations[0].days").value(7))
-                .andExpect(jsonPath("$.recommendations[0].travelStyle").value("Relaxed"));
+                .andExpect(jsonPath("$.recommendations[0].travelStyle").value("Relaxed"))
+                .andExpect(jsonPath("$.recommendations[1].destination").value("Bali"))
+                .andExpect(jsonPath("$.recommendations[1].travelStyle").value("Relaxed"))
+                .andExpect(jsonPath("$.recommendations[2].destination").value("Tokyo"))
+                .andExpect(jsonPath("$.recommendations[2].travelStyle").value("Relaxed"));
     }
 
     @Test
-    void recommendTripsUsesPreferencesAndSavedTrips() throws Exception {
+    void getRecommendationsUsesPreferencesAndSavedTrips() throws Exception {
         mockMvc.perform(put("/api/preferences")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -355,7 +359,7 @@ class TripControllerTest {
                 Instant.parse("2026-01-02T00:00:00Z")
         );
 
-        mockMvc.perform(post("/api/trips/recommendations"))
+        mockMvc.perform(get("/api/trips/recommendations"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.recommendations.length()").value(3))
                 .andExpect(jsonPath("$.recommendations[0].origin").value("Austin"))
@@ -365,6 +369,12 @@ class TripControllerTest {
                 .andExpect(jsonPath("$.recommendations[0].travelStyle").value("Adventure"))
                 .andExpect(jsonPath("$.recommendations[1].destination").value("Tokyo"))
                 .andExpect(jsonPath("$.recommendations[2].destination").value("Cape Town"));
+    }
+
+    @Test
+    void postRecommendationsIsNotSupported() throws Exception {
+        mockMvc.perform(post("/api/trips/recommendations"))
+                .andExpect(status().isMethodNotAllowed());
     }
 
     @Test
