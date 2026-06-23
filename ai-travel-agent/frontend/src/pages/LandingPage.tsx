@@ -5,13 +5,17 @@ import { PromptChip } from "../components/PromptChip";
 import { SectionTitle } from "../components/SectionTitle";
 import { TripCard } from "../components/TripCard";
 import {
+  demoTripRecommendations,
   demoSavedTrips,
   featureCards,
   howItWorks,
   popularDestinations,
   promptSamples,
 } from "../data/travelData";
-import { useGetRecentTripsQuery } from "../features/trips/tripsApi";
+import {
+  useGetRecentTripsQuery,
+  useGetTripRecommendationsQuery,
+} from "../features/trips/tripsApi";
 
 function openPlannerWithPrompt(prompt: string) {
   window.location.href = `/planner?prompt=${encodeURIComponent(prompt)}`;
@@ -19,9 +23,13 @@ function openPlannerWithPrompt(prompt: string) {
 
 export function LandingPage() {
   const recentTripsQuery = useGetRecentTripsQuery();
+  const recommendationsQuery = useGetTripRecommendationsQuery();
   const recentTrips = recentTripsQuery.isError
     ? demoSavedTrips.slice(0, 5)
     : recentTripsQuery.data ?? [];
+  const recommendations = recommendationsQuery.isError
+    ? demoTripRecommendations
+    : recommendationsQuery.data?.recommendations ?? [];
 
   return (
     <main>
@@ -86,6 +94,51 @@ export function LandingPage() {
             <div className="saved-trip-grid">
               {recentTrips.map((trip) => (
                 <TripCard href={`/trips/${trip.id}`} key={trip.id} trip={trip} />
+              ))}
+            </div>
+          )}
+        </Container>
+      </section>
+
+      <section className="page-section tinted-section">
+        <Container>
+          <SectionTitle
+            eyebrow="Recommended trips"
+            title="Three mock ideas for your next plan"
+            description="Recommendations use your saved trips and travel preferences when they are available."
+          />
+
+          {recommendationsQuery.isLoading && (
+            <div className="recommendation-grid" aria-label="Loading recommendations">
+              <div className="skeleton-card" />
+              <div className="skeleton-card" />
+              <div className="skeleton-card" />
+            </div>
+          )}
+
+          {!recommendationsQuery.isLoading && recommendationsQuery.isError && (
+            <p className="recent-trip-note">
+              Backend recommendations are unavailable, so demo ideas are shown for now.
+            </p>
+          )}
+
+          {!recommendationsQuery.isLoading && recommendations.length > 0 && (
+            <div className="recommendation-grid">
+              {recommendations.map((recommendation) => (
+                <article
+                  className="recommendation-card"
+                  key={`${recommendation.origin}-${recommendation.destination}`}
+                >
+                  <p className="eyebrow">{recommendation.travelStyle}</p>
+                  <h3>
+                    {recommendation.origin} to {recommendation.destination}
+                  </h3>
+                  <p>{recommendation.reason}</p>
+                  <div className="trip-card-meta">
+                    <span>{recommendation.days} days</span>
+                    <span>${recommendation.budget.toLocaleString()}</span>
+                  </div>
+                </article>
               ))}
             </div>
           )}

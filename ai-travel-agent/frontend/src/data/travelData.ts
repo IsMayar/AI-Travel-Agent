@@ -1,5 +1,6 @@
 import type {
   SavedTrip,
+  TripRecommendation,
   TripPlanResponse,
 } from "../features/trips/tripsApi";
 
@@ -80,6 +81,33 @@ export const demoSavedTrips: SavedTrip[] = [
     favorite: false,
     createdAt: "2026-06-20T09:45:00.000Z",
     updatedAt: "2026-06-20T09:45:00.000Z",
+  },
+];
+
+export const demoTripRecommendations: TripRecommendation[] = [
+  {
+    origin: "Austin",
+    destination: "Dubai",
+    budget: 1500,
+    days: 7,
+    travelStyle: "Relaxed",
+    reason: "Matches your saved travel preferences.",
+  },
+  {
+    origin: "Austin",
+    destination: "Tokyo",
+    budget: 1650,
+    days: 8,
+    travelStyle: "Relaxed",
+    reason: "Inspired by your saved trip history.",
+  },
+  {
+    origin: "Austin",
+    destination: "Bali",
+    budget: 1800,
+    days: 9,
+    travelStyle: "Relaxed",
+    reason: "A mock idea for your preferred travel style.",
   },
 ];
 

@@ -59,6 +59,19 @@ export interface TripStatsResponse {
   mostCommonDestination: string;
 }
 
+export interface TripRecommendation {
+  origin: string;
+  destination: string;
+  budget: number;
+  days: number;
+  travelStyle: string;
+  reason: string;
+}
+
+export interface TripRecommendationsResponse {
+  recommendations: TripRecommendation[];
+}
+
 export const tripsApi = api.injectEndpoints({
   endpoints: (builder) => ({
     planTrip: builder.mutation<TripPlanResponse, TripPlanRequest>({
@@ -153,6 +166,16 @@ export const tripsApi = api.injectEndpoints({
       query: () => "/api/trips/stats",
       providesTags: [{ type: "SavedTrips", id: "LIST" }],
     }),
+    getTripRecommendations: builder.query<TripRecommendationsResponse, void>({
+      query: () => ({
+        url: "/api/trips/recommendations",
+        method: "POST",
+      }),
+      providesTags: [
+        { type: "SavedTrips", id: "LIST" },
+        "Preferences",
+      ],
+    }),
     getSavedTrip: builder.query<SavedTrip, number>({
       query: (id) => `/api/trips/${id}`,
       providesTags: (_result, _error, id) => [{ type: "SavedTrips", id }],
@@ -182,6 +205,7 @@ export const {
   useGetRecentTripsQuery,
   useGetSavedTripQuery,
   useGetSavedTripsQuery,
+  useGetTripRecommendationsQuery,
   useGetTripStatsQuery,
   usePlanTripMutation,
   useSearchSavedTripsQuery,
