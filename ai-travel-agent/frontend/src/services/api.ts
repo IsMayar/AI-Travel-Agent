@@ -5,6 +5,6 @@ export const api = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: "http://localhost:8080",
   }),
-  tagTypes: ["SavedTrips"],
+  tagTypes: ["Preferences", "SavedTrips"],
   endpoints: () => ({}),
 });

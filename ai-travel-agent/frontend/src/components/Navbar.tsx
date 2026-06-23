@@ -4,6 +4,7 @@ const navItems = [
   { label: "Home", href: "/" },
   { label: "Planner", href: "/planner" },
   { label: "Saved Trips", href: "/saved-trips" },
+  { label: "Preferences", href: "/preferences" },
 ];
 
 export function Navbar() {

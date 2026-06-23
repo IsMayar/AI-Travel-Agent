@@ -1,6 +1,7 @@
 import { Layout } from "./components/Layout";
 import { LandingPage } from "./pages/LandingPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { PreferencesPage } from "./pages/PreferencesPage";
 import { SavedTripsPage } from "./pages/SavedTripsPage";
 import { TripDetailsPage } from "./pages/TripDetailsPage";
 import { TripPlannerPage } from "./pages/TripPlannerPage";
@@ -26,6 +27,10 @@ function renderPage() {
 
   if (path === "/saved-trips") {
     return <SavedTripsPage />;
+  }
+
+  if (path === "/preferences") {
+    return <PreferencesPage />;
   }
 
   const tripDetailsMatch = path.match(/^\/trips\/([^/]+)$/);

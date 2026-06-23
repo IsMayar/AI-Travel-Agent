@@ -25,6 +25,7 @@ body {
 body,
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
@@ -379,6 +380,7 @@ li + li {
 
 .feature-grid,
 .destination-grid,
+.recommendation-grid,
 .saved-trip-grid {
   display: grid;
   gap: 20px;
@@ -387,6 +389,7 @@ li + li {
 
 .feature-card,
 .destination-card,
+.recommendation-card,
 .trip-card,
 .planner-card,
 .budget-card,
@@ -411,6 +414,7 @@ li + li {
 
 .feature-card:hover,
 .destination-card:hover,
+.recommendation-card:hover,
 .trip-card:hover,
 .option-card:hover {
   box-shadow: 0 24px 55px rgba(27, 40, 54, 0.12);
@@ -475,6 +479,7 @@ label {
 }
 
 input,
+select,
 textarea {
   width: 100%;
   border: 1px solid rgba(30, 51, 61, 0.16);
@@ -489,7 +494,8 @@ textarea {
     box-shadow 160ms ease;
 }
 
-input {
+input,
+select {
   min-height: 46px;
   padding: 0 14px;
 }
@@ -501,6 +507,7 @@ textarea {
 }
 
 input:focus,
+select:focus,
 textarea:focus {
   border-color: #0f8f83;
   box-shadow: 0 0 0 4px rgba(15, 143, 131, 0.14);
@@ -750,6 +757,22 @@ textarea:focus {
     transform 160ms ease;
 }
 
+.recommendation-card {
+  display: flex;
+  min-height: 230px;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px;
+  transition:
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.recommendation-card p {
+  margin-bottom: 0;
+}
+
 .trip-card-link {
   display: flex;
   flex: 1;
@@ -928,6 +951,47 @@ textarea:focus {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.preferences-card {
+  border: 1px solid rgba(30, 51, 61, 0.1);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 45px rgba(27, 40, 54, 0.1);
+  padding: 24px;
+}
+
+.preferences-form {
+  display: grid;
+  gap: 18px;
+}
+
+.preferences-form label {
+  display: grid;
+  gap: 8px;
+  color: #243241;
+  font-weight: 800;
+}
+
+.preferences-message {
+  border-radius: 8px;
+  margin: 0;
+  padding: 12px 14px;
+}
+
+.success-text {
+  background: #edf7f4;
+  color: #0f6f67;
+}
+
+.error-text {
+  background: #fff8f7;
+  color: #a4312c;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -1039,6 +1103,7 @@ textarea:focus {
 
   .feature-grid,
   .destination-grid,
+  .recommendation-grid,
   .saved-trip-grid,
   .stats-grid,
   .results-layout,
@@ -1107,6 +1172,7 @@ textarea:focus {
 
   .feature-grid,
   .destination-grid,
+  .recommendation-grid,
   .saved-trip-grid,
   .stats-grid,
   .results-layout,
@@ -1151,6 +1217,7 @@ textarea:focus {
     justify-content: flex-start;
   }
 
+  .form-actions .primary-button,
   .modal-actions .primary-button {
     width: 100%;
   }
