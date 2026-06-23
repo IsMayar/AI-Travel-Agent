@@ -6,8 +6,8 @@ import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { SectionTitle } from "../components/SectionTitle";
 import {
-  type TripNote,
   useAddTripNoteMutation,
+  useGetTripNotesQuery,
   useGetSavedTripQuery,
 } from "../features/trips/tripsApi";
 
@@ -49,11 +49,15 @@ function TripDetailsSkeleton() {
 export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
   const tripId = parseTripId(tripIdParam);
   const [noteContent, setNoteContent] = useState("");
-  const [savedNotes, setSavedNotes] = useState<TripNote[]>([]);
-  const [noteError, setNoteError] = useState("");
+  const [saveNoteError, setSaveNoteError] = useState("");
   const { data: trip, isError, isLoading } = useGetSavedTripQuery(
     tripId ?? skipToken
   );
+  const {
+    data: notes = [],
+    isError: isNotesError,
+    isLoading: isNotesLoading,
+  } = useGetTripNotesQuery(tripId ?? skipToken);
   const [addTripNote, { isLoading: isSavingNote }] = useAddTripNoteMutation();
 
   async function handleNoteSubmit(event: FormEvent<HTMLFormElement>) {
@@ -63,17 +67,16 @@ export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
       return;
     }
 
-    setNoteError("");
+    setSaveNoteError("");
 
     try {
-      const createdNote = await addTripNote({
+      await addTripNote({
         tripId,
         note: { content: noteContent.trim() },
       }).unwrap();
-      setSavedNotes((currentNotes) => [createdNote, ...currentNotes]);
       setNoteContent("");
     } catch {
-      setNoteError("Could not save this note. Please try again.");
+      setSaveNoteError("Could not save this note. Please try again.");
     }
   }
 
@@ -182,24 +185,40 @@ export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
                 </div>
               </form>
 
-              {noteError && (
-                <p className="preferences-message error-text">{noteError}</p>
+              {saveNoteError && (
+                <p className="preferences-message error-text">
+                  {saveNoteError}
+                </p>
               )}
 
-              <div className="notes-list">
-                {savedNotes.length === 0 ? (
-                  <p className="notes-empty">No notes saved yet.</p>
-                ) : (
-                  savedNotes.map((note) => (
-                    <article className="note-item" key={note.id}>
-                      <p>{note.content}</p>
-                      <time dateTime={note.createdAt}>
-                        {formatDate(note.createdAt)}
-                      </time>
-                    </article>
-                  ))
-                )}
-              </div>
+              {isNotesLoading && (
+                <div className="notes-list" aria-label="Loading trip notes">
+                  <div className="skeleton-card note-skeleton" />
+                </div>
+              )}
+
+              {!isNotesLoading && isNotesError && (
+                <p className="preferences-message error-text">
+                  Could not load saved notes.
+                </p>
+              )}
+
+              {!isNotesLoading && !isNotesError && (
+                <div className="notes-list">
+                  {notes.length === 0 ? (
+                    <p className="notes-empty">No notes saved yet.</p>
+                  ) : (
+                    notes.map((note) => (
+                      <article className="note-item" key={note.id}>
+                        <p>{note.content}</p>
+                        <time dateTime={note.createdAt}>
+                          {formatDate(note.createdAt)}
+                        </time>
+                      </article>
+                    ))
+                  )}
+                </div>
+              )}
             </section>
           </>
         )}

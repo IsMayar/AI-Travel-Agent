@@ -151,7 +151,13 @@ export const tripsApi = api.injectEndpoints({
         body: note,
       }),
       invalidatesTags: (_result, _error, { tripId }) => [
-        { type: "SavedTrips", id: tripId },
+        { type: "TripNotes", id: tripId },
+      ],
+    }),
+    getTripNotes: builder.query<TripNote[], number>({
+      query: (tripId) => `/api/trips/${tripId}/notes`,
+      providesTags: (_result, _error, tripId) => [
+        { type: "TripNotes", id: tripId },
       ],
     }),
     getSavedTrips: builder.query<SavedTrip[], { favorite?: boolean } | void>({
@@ -228,6 +234,7 @@ export const {
   useGetSavedTripQuery,
   useGetSavedTripsQuery,
   useGetTripRecommendationsQuery,
+  useGetTripNotesQuery,
   useGetTripStatsQuery,
   usePlanTripMutation,
   useSearchSavedTripsQuery,

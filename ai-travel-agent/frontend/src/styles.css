@@ -1102,6 +1102,10 @@ textarea:focus {
   gap: 12px;
 }
 
+.note-skeleton {
+  min-height: 92px;
+}
+
 .note-item {
   border-radius: 8px;
   background: #f5faf8;
