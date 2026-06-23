@@ -66,7 +66,9 @@ export const demoSavedTrips: SavedTrip[] = [
     destination: "Dubai",
     budget: 1500,
     days: 7,
+    favorite: true,
     createdAt: "2026-06-21T06:13:11.653Z",
+    updatedAt: "2026-06-21T06:13:11.653Z",
   },
   {
     id: 102,
@@ -75,7 +77,9 @@ export const demoSavedTrips: SavedTrip[] = [
     destination: "Tokyo",
     budget: 2200,
     days: 4,
+    favorite: false,
     createdAt: "2026-06-20T09:45:00.000Z",
+    updatedAt: "2026-06-20T09:45:00.000Z",
   },
 ];
 

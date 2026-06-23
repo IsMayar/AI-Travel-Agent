@@ -47,7 +47,9 @@ export interface SavedTrip {
   destination: string;
   budget: number;
   days: number;
+  favorite: boolean;
   createdAt: string;
+  updatedAt: string;
 }
 
 export const tripsApi = api.injectEndpoints({
@@ -77,8 +79,45 @@ export const tripsApi = api.injectEndpoints({
         { type: "SavedTrips", id: "LIST" },
       ],
     }),
-    getSavedTrips: builder.query<SavedTrip[], void>({
-      query: () => "/api/trips",
+    updateSavedTrip: builder.mutation<
+      SavedTrip,
+      { id: number; trip: SaveTripRequest }
+    >({
+      query: ({ id, trip }) => ({
+        url: `/api/trips/${id}`,
+        method: "PUT",
+        body: trip,
+      }),
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: "SavedTrips", id },
+        { type: "SavedTrips", id: "LIST" },
+      ],
+    }),
+    toggleFavoriteTrip: builder.mutation<SavedTrip, number>({
+      query: (id) => ({
+        url: `/api/trips/${id}/favorite`,
+        method: "PATCH",
+      }),
+      invalidatesTags: (_result, _error, id) => [
+        { type: "SavedTrips", id },
+        { type: "SavedTrips", id: "LIST" },
+      ],
+    }),
+    duplicateSavedTrip: builder.mutation<SavedTrip, number>({
+      query: (id) => ({
+        url: `/api/trips/${id}/duplicate`,
+        method: "POST",
+      }),
+      invalidatesTags: [{ type: "SavedTrips", id: "LIST" }],
+    }),
+    getSavedTrips: builder.query<SavedTrip[], { favorite?: boolean } | void>({
+      query: (args) => ({
+        url: "/api/trips",
+        params:
+          args && args.favorite !== undefined
+            ? { favorite: String(args.favorite) }
+            : undefined,
+      }),
       providesTags: (result) =>
         result
           ? [
@@ -94,13 +133,33 @@ export const tripsApi = api.injectEndpoints({
       query: (id) => `/api/trips/${id}`,
       providesTags: (_result, _error, id) => [{ type: "SavedTrips", id }],
     }),
+    searchSavedTrips: builder.query<SavedTrip[], string>({
+      query: (query) => ({
+        url: "/api/trips/search",
+        params: { q: query },
+      }),
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.map((trip) => ({
+                type: "SavedTrips" as const,
+                id: trip.id,
+              })),
+              { type: "SavedTrips", id: "LIST" },
+            ]
+          : [{ type: "SavedTrips", id: "LIST" }],
+    }),
   }),
 });
 
 export const {
   useDeleteSavedTripMutation,
+  useDuplicateSavedTripMutation,
   useGetSavedTripQuery,
   useGetSavedTripsQuery,
   usePlanTripMutation,
+  useSearchSavedTripsQuery,
   useSaveTripMutation,
+  useToggleFavoriteTripMutation,
+  useUpdateSavedTripMutation,
 } = tripsApi;

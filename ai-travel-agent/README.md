@@ -143,6 +143,12 @@ GET /api/trips
 
 Returns saved trips ordered by newest first.
 
+Filter favorites:
+
+```http
+GET /api/trips?favorite=true
+```
+
 ### Get Saved Trip
 
 ```http
@@ -150,6 +156,50 @@ GET /api/trips/{id}
 ```
 
 Returns one saved trip by id. Returns `404 Not Found` when the saved trip does not exist.
+
+### Search Saved Trips
+
+```http
+GET /api/trips/search?q=Dubai
+```
+
+Searches saved trips by destination, origin, or original user message.
+
+### Update Saved Trip
+
+```http
+PUT /api/trips/{id}
+```
+
+Request:
+
+```json
+{
+  "userMessage": "Plan a 5-day trip from Austin to Tokyo under $2200",
+  "origin": "Austin",
+  "destination": "Tokyo",
+  "budget": 2200,
+  "days": 5
+}
+```
+
+Updates the saved trip fields and returns the updated trip. Returns `404 Not Found` when the saved trip does not exist.
+
+### Favorite Saved Trip
+
+```http
+PATCH /api/trips/{id}/favorite
+```
+
+Toggles the saved trip favorite status and returns the updated trip.
+
+### Duplicate Saved Trip
+
+```http
+POST /api/trips/{id}/duplicate
+```
+
+Creates a copy of an existing saved trip with a new id and timestamps.
 
 ### Delete Saved Trip
 
@@ -182,7 +232,7 @@ ai-travel-agent/
       components/      Reusable UI components
       data/            Demo fallback data
       features/        RTK Query trip API
-      pages/           Landing, planner, saved trips, and 404 pages
+      pages/           Landing, planner, saved trips, trip details, and 404 pages
       services/        Base RTK Query API config
 ```
 

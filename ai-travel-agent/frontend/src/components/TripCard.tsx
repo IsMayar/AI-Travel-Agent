@@ -4,7 +4,12 @@ interface TripCardProps {
   trip: SavedTrip;
   href?: string;
   isDeleting?: boolean;
+  isDuplicating?: boolean;
+  isFavoriting?: boolean;
   onDelete?: (trip: SavedTrip) => void;
+  onDuplicate?: (trip: SavedTrip) => void;
+  onEdit?: (trip: SavedTrip) => void;
+  onToggleFavorite?: (trip: SavedTrip) => void;
 }
 
 function formatDate(value: string) {
@@ -25,7 +30,12 @@ export function TripCard({
   trip,
   href,
   isDeleting = false,
+  isDuplicating = false,
+  isFavoriting = false,
   onDelete,
+  onDuplicate,
+  onEdit,
+  onToggleFavorite,
 }: TripCardProps) {
   const content = (
     <>
@@ -54,6 +64,36 @@ export function TripCard({
       )}
       {onDelete && (
         <div className="trip-card-actions">
+          {onToggleFavorite && (
+            <button
+              className="star-button"
+              disabled={isFavoriting}
+              onClick={() => onToggleFavorite(trip)}
+              type="button"
+              aria-label={trip.favorite ? "Remove favorite" : "Add favorite"}
+            >
+              {trip.favorite ? "\u2605" : "\u2606"}
+            </button>
+          )}
+          {onEdit && (
+            <button
+              className="secondary-button compact-button"
+              onClick={() => onEdit(trip)}
+              type="button"
+            >
+              Edit
+            </button>
+          )}
+          {onDuplicate && (
+            <button
+              className="secondary-button compact-button"
+              disabled={isDuplicating}
+              onClick={() => onDuplicate(trip)}
+              type="button"
+            >
+              {isDuplicating ? "Duplicating..." : "Duplicate"}
+            </button>
+          )}
           <button
             className="danger-button"
             disabled={isDeleting}
