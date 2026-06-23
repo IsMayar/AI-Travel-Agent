@@ -95,19 +95,19 @@ export const demoTripRecommendations: TripRecommendation[] = [
   },
   {
     origin: "Austin",
-    destination: "Tokyo",
+    destination: "Bali",
     budget: 1650,
     days: 8,
     travelStyle: "Relaxed",
-    reason: "Inspired by your saved trip history.",
+    reason: "A mock idea for your preferred travel style.",
   },
   {
     origin: "Austin",
-    destination: "Bali",
+    destination: "Tokyo",
     budget: 1800,
     days: 9,
     travelStyle: "Relaxed",
-    reason: "A mock idea for your preferred travel style.",
+    reason: "Inspired by your saved trip history.",
   },
 ];
 

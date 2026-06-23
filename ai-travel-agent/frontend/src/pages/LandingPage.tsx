@@ -105,7 +105,7 @@ export function LandingPage() {
           <SectionTitle
             eyebrow="Recommended trips"
             title="Three mock ideas for your next plan"
-            description="Recommendations use your saved trips and travel preferences when they are available."
+            description="Mock recommendations shaped by your saved trips and travel preferences when available."
           />
 
           {recommendationsQuery.isLoading && (

@@ -167,10 +167,7 @@ export const tripsApi = api.injectEndpoints({
       providesTags: [{ type: "SavedTrips", id: "LIST" }],
     }),
     getTripRecommendations: builder.query<TripRecommendationsResponse, void>({
-      query: () => ({
-        url: "/api/trips/recommendations",
-        method: "POST",
-      }),
+      query: () => "/api/trips/recommendations",
       providesTags: [
         { type: "SavedTrips", id: "LIST" },
         "Preferences",
