@@ -53,6 +53,11 @@ public class TripController {
         return savedTripService.searchTrips(q);
     }
 
+    @GetMapping("/recent")
+    public List<SavedTripResponse> getRecentTrips() {
+        return savedTripService.getRecentTrips();
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<SavedTripResponse> getTrip(@PathVariable Long id) {
         return savedTripService.getTripById(id)

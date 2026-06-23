@@ -47,6 +47,13 @@ public class SavedTripService {
                 .toList();
     }
 
+    public List<SavedTripResponse> getRecentTrips() {
+        return savedTripRepository.findTop5ByOrderByCreatedAtDesc()
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
     public Optional<SavedTripResponse> getTripById(Long id) {
         if (id == null) {
             return Optional.empty();

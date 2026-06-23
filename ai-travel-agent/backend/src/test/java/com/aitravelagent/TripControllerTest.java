@@ -12,6 +12,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.sql.Timestamp;
+import java.time.Instant;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -241,6 +244,28 @@ class TripControllerTest {
     }
 
     @Test
+    void getRecentTripsReturnsFiveMostRecentlyCreatedTrips() throws Exception {
+        for (int index = 1; index <= 6; index++) {
+            insertSavedTrip(
+                    "Trip " + index,
+                    "Origin " + index,
+                    "Destination " + index,
+                    Instant.parse("2026-01-0" + index + "T00:00:00Z")
+            );
+        }
+
+        mockMvc.perform(get("/api/trips/recent"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.length()").value(5))
+                .andExpect(jsonPath("$[0].destination").value("Destination 6"))
+                .andExpect(jsonPath("$[1].destination").value("Destination 5"))
+                .andExpect(jsonPath("$[2].destination").value("Destination 4"))
+                .andExpect(jsonPath("$[3].destination").value("Destination 3"))
+                .andExpect(jsonPath("$[4].destination").value("Destination 2"));
+    }
+
+    @Test
     void getTripsHandlesLegacyRowsWithNullFavoriteAndUpdatedAt() throws Exception {
         jdbcTemplate.update("""
                 INSERT INTO saved_trips (
@@ -439,5 +464,27 @@ class TripControllerTest {
     void deleteTripReturnsNotFoundForMissingTrip() throws Exception {
         mockMvc.perform(delete("/api/trips/{id}", 999999L))
                 .andExpect(status().isNotFound());
+    }
+
+    private void insertSavedTrip(String userMessage, String origin, String destination, Instant createdAt) {
+        jdbcTemplate.update("""
+                INSERT INTO saved_trips (
+                  user_message,
+                  origin,
+                  destination,
+                  budget,
+                  days,
+                  favorite,
+                  created_at,
+                  updated_at
+                )
+                VALUES (?, ?, ?, 1500, 7, FALSE, ?, ?)
+                """,
+                userMessage,
+                origin,
+                destination,
+                Timestamp.from(createdAt),
+                Timestamp.from(createdAt)
+        );
     }
 }

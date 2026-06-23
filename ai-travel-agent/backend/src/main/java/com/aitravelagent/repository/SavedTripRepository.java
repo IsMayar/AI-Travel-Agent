@@ -12,6 +12,8 @@ public interface SavedTripRepository extends JpaRepository<SavedTrip, Long> {
 
     List<SavedTrip> findAllByOrderByCreatedAtDesc();
 
+    List<SavedTrip> findTop5ByOrderByCreatedAtDesc();
+
     @Query("""
             SELECT trip
             FROM SavedTrip trip
