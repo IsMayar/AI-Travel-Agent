@@ -1,6 +1,7 @@
 package com.aitravelagent;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -16,6 +17,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+
+import com.jayway.jsonpath.JsonPath;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -164,5 +168,37 @@ class TripControllerTest {
                 .andExpect(jsonPath("$[0].destination").value("Miami"))
                 .andExpect(jsonPath("$[0].budget").value(800))
                 .andExpect(jsonPath("$[0].days").value(2));
+    }
+
+    @Test
+    void deleteTripRemovesSavedTrip() throws Exception {
+        MvcResult saveResult = mockMvc.perform(post("/api/trips/save")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "userMessage": "Plan a 4-day trip from Austin to Denver under $900",
+                                  "origin": "Austin",
+                                  "destination": "Denver",
+                                  "budget": 900,
+                                  "days": 4
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Integer id = JsonPath.read(saveResult.getResponse().getContentAsString(), "$.id");
+
+        mockMvc.perform(delete("/api/trips/{id}", id))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
+
+        mockMvc.perform(delete("/api/trips/{id}", id))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deleteTripReturnsNotFoundForMissingTrip() throws Exception {
+        mockMvc.perform(delete("/api/trips/{id}", 999999L))
+                .andExpect(status().isNotFound());
     }
 }

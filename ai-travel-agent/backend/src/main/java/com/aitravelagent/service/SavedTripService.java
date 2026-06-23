@@ -40,6 +40,15 @@ public class SavedTripService {
                 .toList();
     }
 
+    public boolean deleteTripById(Long id) {
+        if (id == null || !savedTripRepository.existsById(id)) {
+            return false;
+        }
+
+        savedTripRepository.deleteById(id);
+        return true;
+    }
+
     private SavedTripResponse toResponse(SavedTrip savedTrip) {
         return new SavedTripResponse(
                 savedTrip.getId(),
