@@ -129,6 +129,19 @@ export const tripsApi = api.injectEndpoints({
             ]
           : [{ type: "SavedTrips", id: "LIST" }],
     }),
+    getRecentTrips: builder.query<SavedTrip[], void>({
+      query: () => "/api/trips/recent",
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.map((trip) => ({
+                type: "SavedTrips" as const,
+                id: trip.id,
+              })),
+              { type: "SavedTrips", id: "LIST" },
+            ]
+          : [{ type: "SavedTrips", id: "LIST" }],
+    }),
     getSavedTrip: builder.query<SavedTrip, number>({
       query: (id) => `/api/trips/${id}`,
       providesTags: (_result, _error, id) => [{ type: "SavedTrips", id }],
@@ -155,6 +168,7 @@ export const tripsApi = api.injectEndpoints({
 export const {
   useDeleteSavedTripMutation,
   useDuplicateSavedTripMutation,
+  useGetRecentTripsQuery,
   useGetSavedTripQuery,
   useGetSavedTripsQuery,
   usePlanTripMutation,

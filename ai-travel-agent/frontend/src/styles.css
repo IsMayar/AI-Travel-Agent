@@ -781,6 +781,25 @@ textarea:focus {
   justify-content: flex-end;
 }
 
+.recent-trip-note,
+.recent-trip-empty {
+  border-radius: 8px;
+  background: #f5faf8;
+  color: #5b6876;
+  padding: 18px;
+}
+
+.recent-trip-empty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.recent-trip-empty p {
+  margin: 0;
+}
+
 .saved-toolbar {
   display: grid;
   align-items: end;
@@ -1070,6 +1089,7 @@ textarea:focus {
 
   .results-header,
   .modal-header,
+  .recent-trip-empty,
   .footer-grid {
     align-items: stretch;
     flex-direction: column;
