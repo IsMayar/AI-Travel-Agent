@@ -1117,6 +1117,18 @@ textarea:focus {
   color: #243241;
 }
 
+.note-item-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.note-delete-button {
+  min-height: 36px;
+  padding: 0 12px;
+}
+
 .note-item time,
 .notes-empty {
   color: #5b6876;
@@ -1270,6 +1282,11 @@ textarea:focus {
   .recent-trip-empty,
   .footer-grid {
     align-items: stretch;
+    flex-direction: column;
+  }
+
+  .note-item-footer {
+    align-items: flex-start;
     flex-direction: column;
   }
 

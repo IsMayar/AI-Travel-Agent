@@ -160,6 +160,18 @@ export const tripsApi = api.injectEndpoints({
         { type: "TripNotes", id: tripId },
       ],
     }),
+    deleteTripNote: builder.mutation<
+      void,
+      { tripId: number; noteId: number }
+    >({
+      query: ({ tripId, noteId }) => ({
+        url: `/api/trips/${tripId}/notes/${noteId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (_result, _error, { tripId }) => [
+        { type: "TripNotes", id: tripId },
+      ],
+    }),
     getSavedTrips: builder.query<SavedTrip[], { favorite?: boolean } | void>({
       query: (args) => ({
         url: "/api/trips",
@@ -228,6 +240,7 @@ export const tripsApi = api.injectEndpoints({
 
 export const {
   useAddTripNoteMutation,
+  useDeleteTripNoteMutation,
   useDeleteSavedTripMutation,
   useDuplicateSavedTripMutation,
   useGetRecentTripsQuery,

@@ -7,6 +7,7 @@ import { ErrorState } from "../components/ErrorState";
 import { SectionTitle } from "../components/SectionTitle";
 import {
   useAddTripNoteMutation,
+  useDeleteTripNoteMutation,
   useGetTripNotesQuery,
   useGetSavedTripQuery,
 } from "../features/trips/tripsApi";
@@ -50,6 +51,8 @@ export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
   const tripId = parseTripId(tripIdParam);
   const [noteContent, setNoteContent] = useState("");
   const [saveNoteError, setSaveNoteError] = useState("");
+  const [deleteNoteError, setDeleteNoteError] = useState("");
+  const [deletingNoteId, setDeletingNoteId] = useState<number | null>(null);
   const { data: trip, isError, isLoading } = useGetSavedTripQuery(
     tripId ?? skipToken
   );
@@ -59,6 +62,8 @@ export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
     isLoading: isNotesLoading,
   } = useGetTripNotesQuery(tripId ?? skipToken);
   const [addTripNote, { isLoading: isSavingNote }] = useAddTripNoteMutation();
+  const [deleteTripNote, { isLoading: isDeletingNote }] =
+    useDeleteTripNoteMutation();
 
   async function handleNoteSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -77,6 +82,23 @@ export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
       setNoteContent("");
     } catch {
       setSaveNoteError("Could not save this note. Please try again.");
+    }
+  }
+
+  async function handleDeleteNote(noteId: number) {
+    if (!tripId || !window.confirm("Delete this note?")) {
+      return;
+    }
+
+    setDeleteNoteError("");
+    setDeletingNoteId(noteId);
+
+    try {
+      await deleteTripNote({ tripId, noteId }).unwrap();
+    } catch {
+      setDeleteNoteError("Could not delete this note. Please try again.");
+    } finally {
+      setDeletingNoteId(null);
     }
   }
 
@@ -191,6 +213,12 @@ export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
                 </p>
               )}
 
+              {deleteNoteError && (
+                <p className="preferences-message error-text">
+                  {deleteNoteError}
+                </p>
+              )}
+
               {isNotesLoading && (
                 <div className="notes-list" aria-label="Loading trip notes">
                   <div className="skeleton-card note-skeleton" />
@@ -211,9 +239,21 @@ export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
                     notes.map((note) => (
                       <article className="note-item" key={note.id}>
                         <p>{note.content}</p>
-                        <time dateTime={note.createdAt}>
-                          {formatDate(note.createdAt)}
-                        </time>
+                        <div className="note-item-footer">
+                          <time dateTime={note.createdAt}>
+                            {formatDate(note.createdAt)}
+                          </time>
+                          <button
+                            className="secondary-button compact-button note-delete-button"
+                            disabled={isDeletingNote}
+                            onClick={() => void handleDeleteNote(note.id)}
+                            type="button"
+                          >
+                            {isDeletingNote && deletingNoteId === note.id
+                              ? "Deleting..."
+                              : "Delete"}
+                          </button>
+                        </div>
                       </article>
                     ))
                   )}
