@@ -556,6 +556,124 @@ class TripControllerTest {
     }
 
     @Test
+    void deleteTripNoteRemovesNoteFromSavedTrip() throws Exception {
+        MvcResult saveResult = mockMvc.perform(post("/api/trips/save")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "userMessage": "Plan a 5-day trip from Austin to Dubai under $1500",
+                                  "origin": "Austin",
+                                  "destination": "Dubai",
+                                  "budget": 1500,
+                                  "days": 5
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Integer tripId = JsonPath.read(saveResult.getResponse().getContentAsString(), "$.id");
+        MvcResult noteResult = mockMvc.perform(post("/api/trips/{id}/notes", tripId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "content": "Delete this note later."
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Integer noteId = JsonPath.read(noteResult.getResponse().getContentAsString(), "$.id");
+
+        mockMvc.perform(delete("/api/trips/{tripId}/notes/{noteId}", tripId, noteId))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
+
+        mockMvc.perform(get("/api/trips/{id}/notes", tripId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void deleteTripNoteReturnsNotFoundForMissingTrip() throws Exception {
+        mockMvc.perform(delete("/api/trips/{tripId}/notes/{noteId}", 999999L, 1L))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deleteTripNoteReturnsNotFoundForMissingNote() throws Exception {
+        MvcResult saveResult = mockMvc.perform(post("/api/trips/save")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "userMessage": "Plan a weekend trip",
+                                  "origin": "Austin",
+                                  "destination": "Denver",
+                                  "budget": 900,
+                                  "days": 2
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Integer tripId = JsonPath.read(saveResult.getResponse().getContentAsString(), "$.id");
+
+        mockMvc.perform(delete("/api/trips/{tripId}/notes/{noteId}", tripId, 999999L))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deleteTripNoteReturnsNotFoundWhenNoteBelongsToAnotherTrip() throws Exception {
+        MvcResult firstTripResult = mockMvc.perform(post("/api/trips/save")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "userMessage": "First trip",
+                                  "origin": "Austin",
+                                  "destination": "Dubai",
+                                  "budget": 1500,
+                                  "days": 5
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+        MvcResult secondTripResult = mockMvc.perform(post("/api/trips/save")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "userMessage": "Second trip",
+                                  "origin": "Austin",
+                                  "destination": "Lisbon",
+                                  "budget": 1800,
+                                  "days": 6
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Integer firstTripId = JsonPath.read(firstTripResult.getResponse().getContentAsString(), "$.id");
+        Integer secondTripId = JsonPath.read(secondTripResult.getResponse().getContentAsString(), "$.id");
+        MvcResult noteResult = mockMvc.perform(post("/api/trips/{id}/notes", firstTripId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "content": "This note belongs to the first trip."
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Integer noteId = JsonPath.read(noteResult.getResponse().getContentAsString(), "$.id");
+
+        mockMvc.perform(delete("/api/trips/{tripId}/notes/{noteId}", secondTripId, noteId))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/api/trips/{id}/notes", firstTripId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(noteId));
+    }
+
+    @Test
     void deleteTripRemovesSavedTripWithNotes() throws Exception {
         MvcResult saveResult = mockMvc.perform(post("/api/trips/save")
                         .contentType(MediaType.APPLICATION_JSON)

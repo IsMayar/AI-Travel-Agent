@@ -254,6 +254,20 @@ public class SavedTripService {
     }
 
     @Transactional
+    public boolean deleteNote(Long tripId, Long noteId) {
+        if (tripId == null || noteId == null || !savedTripRepository.existsById(tripId)) {
+            return false;
+        }
+
+        return tripNoteRepository.findByIdAndTrip_Id(noteId, tripId)
+                .map(note -> {
+                    tripNoteRepository.delete(note);
+                    return true;
+                })
+                .orElse(false);
+    }
+
+    @Transactional
     public boolean deleteTripById(Long id) {
         if (id == null || !savedTripRepository.existsById(id)) {
             return false;

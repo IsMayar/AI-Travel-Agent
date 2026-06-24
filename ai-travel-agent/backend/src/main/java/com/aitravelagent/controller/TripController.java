@@ -120,6 +120,18 @@ public class TripController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @DeleteMapping("/{tripId}/notes/{noteId}")
+    public ResponseEntity<Void> deleteTripNote(
+            @PathVariable Long tripId,
+            @PathVariable Long noteId
+    ) {
+        if (!savedTripService.deleteNote(tripId, noteId)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.noContent().build();
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTrip(@PathVariable Long id) {
         if (!savedTripService.deleteTripById(id)) {
