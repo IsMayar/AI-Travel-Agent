@@ -56,10 +56,26 @@ export interface TripNoteRequest {
   content: string;
 }
 
+export interface TripNoteUpdateRequest {
+  content: string;
+}
+
 export interface TripNote {
   id: number;
   tripId: number;
   content: string;
+  createdAt: string;
+}
+
+export interface TripChecklistItemRequest {
+  title: string;
+}
+
+export interface TripChecklistItem {
+  id: number;
+  tripId: number;
+  title: string;
+  completed: boolean;
   createdAt: string;
 }
 
@@ -160,6 +176,19 @@ export const tripsApi = api.injectEndpoints({
         { type: "TripNotes", id: tripId },
       ],
     }),
+    updateTripNote: builder.mutation<
+      TripNote,
+      { tripId: number; noteId: number; note: TripNoteUpdateRequest }
+    >({
+      query: ({ tripId, noteId, note }) => ({
+        url: `/api/trips/${tripId}/notes/${noteId}`,
+        method: "PUT",
+        body: note,
+      }),
+      invalidatesTags: (_result, _error, { tripId }) => [
+        { type: "TripNotes", id: tripId },
+      ],
+    }),
     deleteTripNote: builder.mutation<
       void,
       { tripId: number; noteId: number }
@@ -170,6 +199,49 @@ export const tripsApi = api.injectEndpoints({
       }),
       invalidatesTags: (_result, _error, { tripId }) => [
         { type: "TripNotes", id: tripId },
+      ],
+    }),
+    getTripChecklist: builder.query<TripChecklistItem[], number>({
+      query: (tripId) => `/api/trips/${tripId}/checklist`,
+      providesTags: (_result, _error, tripId) => [
+        { type: "TripChecklist", id: tripId },
+      ],
+    }),
+    addTripChecklistItem: builder.mutation<
+      TripChecklistItem,
+      { tripId: number; item: TripChecklistItemRequest }
+    >({
+      query: ({ tripId, item }) => ({
+        url: `/api/trips/${tripId}/checklist`,
+        method: "POST",
+        body: item,
+      }),
+      invalidatesTags: (_result, _error, { tripId }) => [
+        { type: "TripChecklist", id: tripId },
+      ],
+    }),
+    toggleTripChecklistItem: builder.mutation<
+      TripChecklistItem,
+      { tripId: number; itemId: number }
+    >({
+      query: ({ tripId, itemId }) => ({
+        url: `/api/trips/${tripId}/checklist/${itemId}`,
+        method: "PATCH",
+      }),
+      invalidatesTags: (_result, _error, { tripId }) => [
+        { type: "TripChecklist", id: tripId },
+      ],
+    }),
+    deleteTripChecklistItem: builder.mutation<
+      void,
+      { tripId: number; itemId: number }
+    >({
+      query: ({ tripId, itemId }) => ({
+        url: `/api/trips/${tripId}/checklist/${itemId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (_result, _error, { tripId }) => [
+        { type: "TripChecklist", id: tripId },
       ],
     }),
     getSavedTrips: builder.query<SavedTrip[], { favorite?: boolean } | void>({
@@ -240,9 +312,12 @@ export const tripsApi = api.injectEndpoints({
 
 export const {
   useAddTripNoteMutation,
+  useAddTripChecklistItemMutation,
+  useDeleteTripChecklistItemMutation,
   useDeleteTripNoteMutation,
   useDeleteSavedTripMutation,
   useDuplicateSavedTripMutation,
+  useGetTripChecklistQuery,
   useGetRecentTripsQuery,
   useGetSavedTripQuery,
   useGetSavedTripsQuery,
@@ -252,6 +327,8 @@ export const {
   usePlanTripMutation,
   useSearchSavedTripsQuery,
   useSaveTripMutation,
+  useToggleTripChecklistItemMutation,
   useToggleFavoriteTripMutation,
+  useUpdateTripNoteMutation,
   useUpdateSavedTripMutation,
 } = tripsApi;

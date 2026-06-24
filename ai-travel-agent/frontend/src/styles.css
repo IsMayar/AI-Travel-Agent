@@ -1063,7 +1063,8 @@ textarea:focus {
   font-size: 1.02rem;
 }
 
-.trip-notes-card {
+.trip-notes-card,
+.trip-checklist-card {
   display: grid;
   gap: 18px;
   margin-top: 22px;
@@ -1087,17 +1088,22 @@ textarea:focus {
   margin-bottom: 0;
 }
 
-.notes-form {
+.notes-form,
+.checklist-form,
+.inline-note-edit-form {
   display: grid;
   gap: 12px;
 }
 
-.notes-form label {
+.notes-form label,
+.checklist-form label,
+.inline-note-edit-form label {
   color: #243241;
   font-weight: 800;
 }
 
-.notes-list {
+.notes-list,
+.checklist-list {
   display: grid;
   gap: 12px;
 }
@@ -1115,6 +1121,12 @@ textarea:focus {
 .note-item p {
   margin-bottom: 8px;
   color: #243241;
+}
+
+.note-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .note-item-footer {
@@ -1138,6 +1150,46 @@ textarea:focus {
 
 .notes-empty {
   margin: 0;
+}
+
+.checklist-input-row {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-radius: 8px;
+  background: #f5faf8;
+  padding: 14px;
+}
+
+.checklist-item label {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+  color: #243241;
+  font-weight: 800;
+}
+
+.checklist-item input {
+  width: 18px;
+  height: 18px;
+  accent-color: #0f8f83;
+}
+
+.checklist-item span {
+  overflow-wrap: anywhere;
+}
+
+.checklist-item.completed span {
+  color: #5b6876;
+  text-decoration: line-through;
 }
 
 .site-footer {
@@ -1285,9 +1337,14 @@ textarea:focus {
     flex-direction: column;
   }
 
-  .note-item-footer {
+  .note-item-footer,
+  .checklist-item {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .checklist-input-row {
+    grid-template-columns: 1fr;
   }
 
   .saved-toolbar,

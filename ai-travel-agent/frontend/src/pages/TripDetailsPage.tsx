@@ -6,10 +6,15 @@ import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { SectionTitle } from "../components/SectionTitle";
 import {
+  useAddTripChecklistItemMutation,
   useAddTripNoteMutation,
+  useDeleteTripChecklistItemMutation,
   useDeleteTripNoteMutation,
+  useGetTripChecklistQuery,
   useGetTripNotesQuery,
   useGetSavedTripQuery,
+  useToggleTripChecklistItemMutation,
+  useUpdateTripNoteMutation,
 } from "../features/trips/tripsApi";
 
 interface TripDetailsPageProps {
@@ -51,8 +56,20 @@ export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
   const tripId = parseTripId(tripIdParam);
   const [noteContent, setNoteContent] = useState("");
   const [saveNoteError, setSaveNoteError] = useState("");
+  const [updateNoteError, setUpdateNoteError] = useState("");
   const [deleteNoteError, setDeleteNoteError] = useState("");
+  const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
+  const [editNoteContent, setEditNoteContent] = useState("");
+  const [updatingNoteId, setUpdatingNoteId] = useState<number | null>(null);
   const [deletingNoteId, setDeletingNoteId] = useState<number | null>(null);
+  const [checklistTitle, setChecklistTitle] = useState("");
+  const [checklistError, setChecklistError] = useState("");
+  const [togglingChecklistItemId, setTogglingChecklistItemId] = useState<
+    number | null
+  >(null);
+  const [deletingChecklistItemId, setDeletingChecklistItemId] = useState<
+    number | null
+  >(null);
   const { data: trip, isError, isLoading } = useGetSavedTripQuery(
     tripId ?? skipToken
   );
@@ -61,9 +78,22 @@ export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
     isError: isNotesError,
     isLoading: isNotesLoading,
   } = useGetTripNotesQuery(tripId ?? skipToken);
+  const {
+    data: checklistItems = [],
+    isError: isChecklistError,
+    isLoading: isChecklistLoading,
+  } = useGetTripChecklistQuery(tripId ?? skipToken);
   const [addTripNote, { isLoading: isSavingNote }] = useAddTripNoteMutation();
+  const [updateTripNote, { isLoading: isUpdatingNote }] =
+    useUpdateTripNoteMutation();
   const [deleteTripNote, { isLoading: isDeletingNote }] =
     useDeleteTripNoteMutation();
+  const [addTripChecklistItem, { isLoading: isAddingChecklistItem }] =
+    useAddTripChecklistItemMutation();
+  const [toggleTripChecklistItem, { isLoading: isTogglingChecklistItem }] =
+    useToggleTripChecklistItemMutation();
+  const [deleteTripChecklistItem, { isLoading: isDeletingChecklistItem }] =
+    useDeleteTripChecklistItemMutation();
 
   async function handleNoteSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -85,6 +115,41 @@ export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
     }
   }
 
+  function startEditNote(noteId: number, content: string) {
+    setEditingNoteId(noteId);
+    setEditNoteContent(content);
+    setUpdateNoteError("");
+  }
+
+  function cancelEditNote() {
+    setEditingNoteId(null);
+    setEditNoteContent("");
+  }
+
+  async function handleUpdateNote(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!tripId || !editingNoteId || !editNoteContent.trim()) {
+      return;
+    }
+
+    setUpdateNoteError("");
+    setUpdatingNoteId(editingNoteId);
+
+    try {
+      await updateTripNote({
+        tripId,
+        noteId: editingNoteId,
+        note: { content: editNoteContent.trim() },
+      }).unwrap();
+      cancelEditNote();
+    } catch {
+      setUpdateNoteError("Could not update this note. Please try again.");
+    } finally {
+      setUpdatingNoteId(null);
+    }
+  }
+
   async function handleDeleteNote(noteId: number) {
     if (!tripId || !window.confirm("Delete this note?")) {
       return;
@@ -99,6 +164,60 @@ export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
       setDeleteNoteError("Could not delete this note. Please try again.");
     } finally {
       setDeletingNoteId(null);
+    }
+  }
+
+  async function handleChecklistSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!tripId || !checklistTitle.trim()) {
+      return;
+    }
+
+    setChecklistError("");
+
+    try {
+      await addTripChecklistItem({
+        tripId,
+        item: { title: checklistTitle.trim() },
+      }).unwrap();
+      setChecklistTitle("");
+    } catch {
+      setChecklistError("Could not save this checklist item. Please try again.");
+    }
+  }
+
+  async function handleToggleChecklistItem(itemId: number) {
+    if (!tripId) {
+      return;
+    }
+
+    setChecklistError("");
+    setTogglingChecklistItemId(itemId);
+
+    try {
+      await toggleTripChecklistItem({ tripId, itemId }).unwrap();
+    } catch {
+      setChecklistError("Could not update this checklist item.");
+    } finally {
+      setTogglingChecklistItemId(null);
+    }
+  }
+
+  async function handleDeleteChecklistItem(itemId: number) {
+    if (!tripId || !window.confirm("Delete this checklist item?")) {
+      return;
+    }
+
+    setChecklistError("");
+    setDeletingChecklistItemId(itemId);
+
+    try {
+      await deleteTripChecklistItem({ tripId, itemId }).unwrap();
+    } catch {
+      setChecklistError("Could not delete this checklist item.");
+    } finally {
+      setDeletingChecklistItemId(null);
     }
   }
 
@@ -213,6 +332,12 @@ export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
                 </p>
               )}
 
+              {updateNoteError && (
+                <p className="preferences-message error-text">
+                  {updateNoteError}
+                </p>
+              )}
+
               {deleteNoteError && (
                 <p className="preferences-message error-text">
                   {deleteNoteError}
@@ -238,22 +363,183 @@ export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
                   ) : (
                     notes.map((note) => (
                       <article className="note-item" key={note.id}>
-                        <p>{note.content}</p>
+                        {editingNoteId === note.id ? (
+                          <form
+                            className="inline-note-edit-form"
+                            onSubmit={handleUpdateNote}
+                          >
+                            <label htmlFor={`trip-note-edit-${note.id}`}>
+                              Edit note
+                            </label>
+                            <textarea
+                              id={`trip-note-edit-${note.id}`}
+                              onChange={(event) =>
+                                setEditNoteContent(event.target.value)
+                              }
+                              rows={3}
+                              value={editNoteContent}
+                            />
+                            <div className="note-actions">
+                              <button
+                                className="primary-button compact-button"
+                                disabled={
+                                  isUpdatingNote || !editNoteContent.trim()
+                                }
+                                type="submit"
+                              >
+                                {isUpdatingNote && updatingNoteId === note.id
+                                  ? "Saving..."
+                                  : "Save"}
+                              </button>
+                              <button
+                                className="secondary-button compact-button"
+                                disabled={isUpdatingNote}
+                                onClick={cancelEditNote}
+                                type="button"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </form>
+                        ) : (
+                          <p>{note.content}</p>
+                        )}
                         <div className="note-item-footer">
                           <time dateTime={note.createdAt}>
                             {formatDate(note.createdAt)}
                           </time>
-                          <button
-                            className="secondary-button compact-button note-delete-button"
-                            disabled={isDeletingNote}
-                            onClick={() => void handleDeleteNote(note.id)}
-                            type="button"
-                          >
-                            {isDeletingNote && deletingNoteId === note.id
-                              ? "Deleting..."
-                              : "Delete"}
-                          </button>
+                          {editingNoteId !== note.id && (
+                            <div className="note-actions">
+                              <button
+                                className="secondary-button compact-button"
+                                disabled={isDeletingNote || isUpdatingNote}
+                                onClick={() =>
+                                  startEditNote(note.id, note.content)
+                                }
+                                type="button"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                className="secondary-button compact-button note-delete-button"
+                                disabled={isDeletingNote || isUpdatingNote}
+                                onClick={() => void handleDeleteNote(note.id)}
+                                type="button"
+                              >
+                                {isDeletingNote && deletingNoteId === note.id
+                                  ? "Deleting..."
+                                  : "Delete"}
+                              </button>
+                            </div>
+                          )}
                         </div>
+                      </article>
+                    ))
+                  )}
+                </div>
+              )}
+            </section>
+
+            <section
+              className="trip-checklist-card"
+              aria-labelledby="trip-checklist"
+            >
+              <div className="notes-header">
+                <div>
+                  <p className="eyebrow">Checklist</p>
+                  <h3 id="trip-checklist">Trip checklist</h3>
+                </div>
+              </div>
+
+              <form className="checklist-form" onSubmit={handleChecklistSubmit}>
+                <label htmlFor="trip-checklist-title">Add checklist item</label>
+                <div className="checklist-input-row">
+                  <input
+                    id="trip-checklist-title"
+                    onChange={(event) => setChecklistTitle(event.target.value)}
+                    placeholder="Pack passport"
+                    type="text"
+                    value={checklistTitle}
+                  />
+                  <button
+                    className="primary-button"
+                    disabled={isAddingChecklistItem || !checklistTitle.trim()}
+                    type="submit"
+                  >
+                    {isAddingChecklistItem ? "Adding..." : "Add Item"}
+                  </button>
+                </div>
+              </form>
+
+              {checklistError && (
+                <p className="preferences-message error-text">
+                  {checklistError}
+                </p>
+              )}
+
+              {isChecklistLoading && (
+                <div
+                  className="checklist-list"
+                  aria-label="Loading trip checklist"
+                >
+                  <div className="skeleton-card note-skeleton" />
+                </div>
+              )}
+
+              {!isChecklistLoading && isChecklistError && (
+                <p className="preferences-message error-text">
+                  Could not load checklist items.
+                </p>
+              )}
+
+              {!isChecklistLoading && !isChecklistError && (
+                <div className="checklist-list">
+                  {checklistItems.length === 0 ? (
+                    <p className="notes-empty">No checklist items yet.</p>
+                  ) : (
+                    checklistItems.map((item) => (
+                      <article
+                        className={`checklist-item${
+                          item.completed ? " completed" : ""
+                        }`}
+                        key={item.id}
+                      >
+                        <label>
+                          <input
+                            checked={item.completed}
+                            aria-label={
+                              isTogglingChecklistItem &&
+                              togglingChecklistItemId === item.id
+                                ? "Updating checklist item"
+                                : "Toggle checklist item"
+                            }
+                            disabled={
+                              isTogglingChecklistItem ||
+                              isDeletingChecklistItem
+                            }
+                            onChange={() =>
+                              void handleToggleChecklistItem(item.id)
+                            }
+                            type="checkbox"
+                          />
+                          <span>{item.title}</span>
+                        </label>
+                        <button
+                          className="secondary-button compact-button note-delete-button"
+                          disabled={
+                            isDeletingChecklistItem ||
+                            isTogglingChecklistItem
+                          }
+                          onClick={() =>
+                            void handleDeleteChecklistItem(item.id)
+                          }
+                          type="button"
+                        >
+                          {isDeletingChecklistItem &&
+                          deletingChecklistItemId === item.id
+                            ? "Deleting..."
+                            : "Delete"}
+                        </button>
                       </article>
                     ))
                   )}
