@@ -13,5 +13,7 @@ public interface TripChecklistItemRepository extends JpaRepository<TripChecklist
 
     Optional<TripChecklistItem> findByIdAndTrip_Id(Long id, Long tripId);
 
+    long countByCompletedTrue();
+
     void deleteByTripId(Long tripId);
 }

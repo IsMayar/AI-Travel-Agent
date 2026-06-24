@@ -365,6 +365,91 @@ Deletes one budget item. Returns `204 No Content` when deleted.
 
 Trip document and budget item endpoints return `404 Not Found` when the saved trip does not exist, the child item does not exist, or the child item does not belong to the specified trip.
 
+### Trip Itinerary Items
+
+```http
+GET /api/trips/{tripId}/itinerary
+```
+
+Returns itinerary items for a saved trip ordered by day number and start time.
+
+```http
+POST /api/trips/{tripId}/itinerary
+```
+
+Request:
+
+```json
+{
+  "dayNumber": 1,
+  "title": "Arrival and check-in",
+  "description": "Arrive, settle in, and take an evening walk.",
+  "location": "Hotel",
+  "startTime": "15:00",
+  "endTime": "18:00"
+}
+```
+
+Creates an itinerary item.
+
+```http
+PUT /api/trips/{tripId}/itinerary/{itemId}
+```
+
+Updates an existing itinerary item and returns the updated item.
+
+```http
+DELETE /api/trips/{tripId}/itinerary/{itemId}
+```
+
+Deletes one itinerary item. Returns `204 No Content` when deleted.
+
+### Trip Tags
+
+```http
+GET /api/trips/{tripId}/tags
+```
+
+Returns tags for a saved trip.
+
+```http
+POST /api/trips/{tripId}/tags
+```
+
+Request:
+
+```json
+{
+  "name": "Beach"
+}
+```
+
+Creates a tag for the saved trip. Duplicate tag names are ignored case-insensitively for the same trip.
+
+```http
+DELETE /api/trips/{tripId}/tags/{tagId}
+```
+
+Deletes one tag. Returns `204 No Content` when deleted.
+
+Trip itinerary and tag endpoints return `404 Not Found` when the saved trip does not exist, the child item does not exist, or the child item does not belong to the specified trip.
+
+### Export Trip
+
+```http
+GET /api/trips/{id}/export
+```
+
+Returns a `text/plain` trip export with basic trip info, notes, checklist items, documents, budget items, itinerary items, and tags. The MVP exports plain text only, not PDF.
+
+### Dashboard Summary
+
+```http
+GET /api/dashboard/summary
+```
+
+Returns dashboard totals for trips, favorites, notes, checklist items, completed checklist items, documents, budget item amount, itinerary items, tags, and recent trips.
+
 ## Project Structure
 
 ```text
@@ -388,7 +473,7 @@ ai-travel-agent/
       components/      Reusable UI components
       data/            Demo fallback data
       features/        RTK Query trip API
-      pages/           Landing, planner, saved trips, trip details, and 404 pages
+      pages/           Landing, planner, saved trips, dashboard, trip details, preferences, and 404 pages
       services/        Base RTK Query API config
 ```
 

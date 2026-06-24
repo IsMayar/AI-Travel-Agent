@@ -2,6 +2,7 @@ package com.aitravelagent.controller;
 
 import java.util.List;
 
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +23,8 @@ import com.aitravelagent.dto.TripChecklistItemRequest;
 import com.aitravelagent.dto.TripChecklistItemResponse;
 import com.aitravelagent.dto.TripDocumentRequest;
 import com.aitravelagent.dto.TripDocumentResponse;
+import com.aitravelagent.dto.TripItineraryItemRequest;
+import com.aitravelagent.dto.TripItineraryItemResponse;
 import com.aitravelagent.dto.TripNoteRequest;
 import com.aitravelagent.dto.TripNoteResponse;
 import com.aitravelagent.dto.TripNoteUpdateRequest;
@@ -29,6 +32,8 @@ import com.aitravelagent.dto.TripPlanRequest;
 import com.aitravelagent.dto.TripPlanResponse;
 import com.aitravelagent.dto.TripRecommendationsResponse;
 import com.aitravelagent.dto.TripStatsResponse;
+import com.aitravelagent.dto.TripTagRequest;
+import com.aitravelagent.dto.TripTagResponse;
 import com.aitravelagent.service.SavedTripService;
 import com.aitravelagent.service.TripPlanService;
 
@@ -256,6 +261,84 @@ public class TripController {
         }
 
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/itinerary")
+    public ResponseEntity<List<TripItineraryItemResponse>> getTripItinerary(@PathVariable Long id) {
+        return savedTripService.getItineraryForTrip(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/{id}/itinerary")
+    public ResponseEntity<TripItineraryItemResponse> addTripItineraryItem(
+            @PathVariable Long id,
+            @RequestBody TripItineraryItemRequest request
+    ) {
+        return savedTripService.addItineraryItem(id, request)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/{id}/itinerary/{itemId}")
+    public ResponseEntity<TripItineraryItemResponse> updateTripItineraryItem(
+            @PathVariable Long id,
+            @PathVariable Long itemId,
+            @RequestBody TripItineraryItemRequest request
+    ) {
+        return savedTripService.updateItineraryItem(id, itemId, request)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{id}/itinerary/{itemId}")
+    public ResponseEntity<Void> deleteTripItineraryItem(
+            @PathVariable Long id,
+            @PathVariable Long itemId
+    ) {
+        if (!savedTripService.deleteItineraryItem(id, itemId)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/tags")
+    public ResponseEntity<List<TripTagResponse>> getTripTags(@PathVariable Long id) {
+        return savedTripService.getTagsForTrip(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/{id}/tags")
+    public ResponseEntity<TripTagResponse> addTripTag(
+            @PathVariable Long id,
+            @RequestBody TripTagRequest request
+    ) {
+        return savedTripService.addTag(id, request)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{id}/tags/{tagId}")
+    public ResponseEntity<Void> deleteTripTag(
+            @PathVariable Long id,
+            @PathVariable Long tagId
+    ) {
+        if (!savedTripService.deleteTag(id, tagId)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping(value = "/{id}/export", produces = MediaType.TEXT_PLAIN_VALUE)
+    public ResponseEntity<String> exportTrip(@PathVariable Long id) {
+        return savedTripService.exportTrip(id)
+                .map(exportText -> ResponseEntity.ok()
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .body(exportText))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")

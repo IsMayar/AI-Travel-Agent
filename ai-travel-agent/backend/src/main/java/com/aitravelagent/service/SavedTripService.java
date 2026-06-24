@@ -2,6 +2,7 @@ package com.aitravelagent.service;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -20,22 +21,30 @@ import com.aitravelagent.dto.TripChecklistItemRequest;
 import com.aitravelagent.dto.TripChecklistItemResponse;
 import com.aitravelagent.dto.TripDocumentRequest;
 import com.aitravelagent.dto.TripDocumentResponse;
+import com.aitravelagent.dto.TripItineraryItemRequest;
+import com.aitravelagent.dto.TripItineraryItemResponse;
 import com.aitravelagent.dto.TripNoteRequest;
 import com.aitravelagent.dto.TripNoteResponse;
 import com.aitravelagent.dto.TripNoteUpdateRequest;
 import com.aitravelagent.dto.TripRecommendationResponse;
 import com.aitravelagent.dto.TripRecommendationsResponse;
 import com.aitravelagent.dto.TripStatsResponse;
+import com.aitravelagent.dto.TripTagRequest;
+import com.aitravelagent.dto.TripTagResponse;
 import com.aitravelagent.entity.SavedTrip;
 import com.aitravelagent.entity.TripBudgetItem;
 import com.aitravelagent.entity.TripChecklistItem;
 import com.aitravelagent.entity.TripDocument;
+import com.aitravelagent.entity.TripItineraryItem;
 import com.aitravelagent.entity.TripNote;
+import com.aitravelagent.entity.TripTag;
 import com.aitravelagent.repository.SavedTripRepository;
 import com.aitravelagent.repository.TripBudgetItemRepository;
 import com.aitravelagent.repository.TripChecklistItemRepository;
 import com.aitravelagent.repository.TripDocumentRepository;
+import com.aitravelagent.repository.TripItineraryItemRepository;
 import com.aitravelagent.repository.TripNoteRepository;
+import com.aitravelagent.repository.TripTagRepository;
 
 @Service
 public class SavedTripService {
@@ -46,6 +55,8 @@ public class SavedTripService {
     private final TripChecklistItemRepository tripChecklistItemRepository;
     private final TripDocumentRepository tripDocumentRepository;
     private final TripBudgetItemRepository tripBudgetItemRepository;
+    private final TripItineraryItemRepository tripItineraryItemRepository;
+    private final TripTagRepository tripTagRepository;
 
     public SavedTripService(
             SavedTripRepository savedTripRepository,
@@ -53,7 +64,9 @@ public class SavedTripService {
             TripNoteRepository tripNoteRepository,
             TripChecklistItemRepository tripChecklistItemRepository,
             TripDocumentRepository tripDocumentRepository,
-            TripBudgetItemRepository tripBudgetItemRepository
+            TripBudgetItemRepository tripBudgetItemRepository,
+            TripItineraryItemRepository tripItineraryItemRepository,
+            TripTagRepository tripTagRepository
     ) {
         this.savedTripRepository = savedTripRepository;
         this.travelPreferencesService = travelPreferencesService;
@@ -61,6 +74,8 @@ public class SavedTripService {
         this.tripChecklistItemRepository = tripChecklistItemRepository;
         this.tripDocumentRepository = tripDocumentRepository;
         this.tripBudgetItemRepository = tripBudgetItemRepository;
+        this.tripItineraryItemRepository = tripItineraryItemRepository;
+        this.tripTagRepository = tripTagRepository;
     }
 
     public SavedTripResponse saveTrip(SavedTripRequest request) {
@@ -488,12 +503,167 @@ public class SavedTripService {
                 .orElse(false);
     }
 
+    public Optional<List<TripItineraryItemResponse>> getItineraryForTrip(Long tripId) {
+        if (tripId == null || !savedTripRepository.existsById(tripId)) {
+            return Optional.empty();
+        }
+
+        List<TripItineraryItemResponse> itinerary = tripItineraryItemRepository
+                .findByTripIdOrderByDayNumberAscStartTimeAsc(tripId)
+                .stream()
+                .map(item -> toItineraryResponse(item, tripId))
+                .toList();
+
+        return Optional.of(itinerary);
+    }
+
+    public Optional<TripItineraryItemResponse> addItineraryItem(
+            Long tripId,
+            TripItineraryItemRequest request
+    ) {
+        if (tripId == null) {
+            return Optional.empty();
+        }
+
+        return savedTripRepository.findById(tripId)
+                .map(savedTrip -> {
+                    TripItineraryItem item = new TripItineraryItem();
+                    applyItineraryRequest(item, request);
+                    item.setTrip(savedTrip);
+
+                    return toItineraryResponse(tripItineraryItemRepository.save(item));
+                });
+    }
+
+    public Optional<TripItineraryItemResponse> updateItineraryItem(
+            Long tripId,
+            Long itemId,
+            TripItineraryItemRequest request
+    ) {
+        if (tripId == null || itemId == null || !savedTripRepository.existsById(tripId)) {
+            return Optional.empty();
+        }
+
+        return tripItineraryItemRepository.findByIdAndTrip_Id(itemId, tripId)
+                .map(item -> {
+                    applyItineraryRequest(item, request);
+                    return toItineraryResponse(tripItineraryItemRepository.save(item), tripId);
+                });
+    }
+
+    @Transactional
+    public boolean deleteItineraryItem(Long tripId, Long itemId) {
+        if (tripId == null || itemId == null || !savedTripRepository.existsById(tripId)) {
+            return false;
+        }
+
+        return tripItineraryItemRepository.findByIdAndTrip_Id(itemId, tripId)
+                .map(item -> {
+                    tripItineraryItemRepository.delete(item);
+                    return true;
+                })
+                .orElse(false);
+    }
+
+    public Optional<List<TripTagResponse>> getTagsForTrip(Long tripId) {
+        if (tripId == null || !savedTripRepository.existsById(tripId)) {
+            return Optional.empty();
+        }
+
+        List<TripTagResponse> tags = tripTagRepository.findByTripIdOrderByNameAsc(tripId)
+                .stream()
+                .map(tag -> toTagResponse(tag, tripId))
+                .toList();
+
+        return Optional.of(tags);
+    }
+
+    public Optional<TripTagResponse> addTag(Long tripId, TripTagRequest request) {
+        if (tripId == null) {
+            return Optional.empty();
+        }
+
+        return savedTripRepository.findById(tripId)
+                .map(savedTrip -> {
+                    TripTagRequest safeRequest = request == null
+                            ? new TripTagRequest(null)
+                            : request;
+                    String name = defaultString(safeRequest.name(), "Trip tag");
+
+                    return tripTagRepository.findFirstByTrip_IdAndNameIgnoreCase(tripId, name)
+                            .map(existingTag -> toTagResponse(existingTag, tripId))
+                            .orElseGet(() -> {
+                                TripTag tag = new TripTag();
+                                tag.setTrip(savedTrip);
+                                tag.setName(name);
+                                return toTagResponse(tripTagRepository.save(tag));
+                            });
+                });
+    }
+
+    @Transactional
+    public boolean deleteTag(Long tripId, Long tagId) {
+        if (tripId == null || tagId == null || !savedTripRepository.existsById(tripId)) {
+            return false;
+        }
+
+        return tripTagRepository.findByIdAndTrip_Id(tagId, tripId)
+                .map(tag -> {
+                    tripTagRepository.delete(tag);
+                    return true;
+                })
+                .orElse(false);
+    }
+
+    public Optional<String> exportTrip(Long tripId) {
+        if (tripId == null) {
+            return Optional.empty();
+        }
+
+        return savedTripRepository.findById(tripId)
+                .map(savedTrip -> {
+                    SavedTripResponse trip = toResponse(savedTrip);
+                    List<TripNoteResponse> notes = tripNoteRepository.findByTripIdOrderByCreatedAtDesc(tripId)
+                            .stream()
+                            .map(note -> toNoteResponse(note, tripId))
+                            .toList();
+                    List<TripChecklistItemResponse> checklist = tripChecklistItemRepository
+                            .findByTripIdOrderByCreatedAtAsc(tripId)
+                            .stream()
+                            .map(item -> toChecklistResponse(item, tripId))
+                            .toList();
+                    List<TripDocumentResponse> documents = tripDocumentRepository
+                            .findByTripIdOrderByCreatedAtDesc(tripId)
+                            .stream()
+                            .map(document -> toDocumentResponse(document, tripId))
+                            .toList();
+                    List<TripBudgetItemResponse> budgetItems = tripBudgetItemRepository
+                            .findByTripIdOrderByCreatedAtAsc(tripId)
+                            .stream()
+                            .map(item -> toBudgetItemResponse(item, tripId))
+                            .toList();
+                    List<TripItineraryItemResponse> itinerary = tripItineraryItemRepository
+                            .findByTripIdOrderByDayNumberAscStartTimeAsc(tripId)
+                            .stream()
+                            .map(item -> toItineraryResponse(item, tripId))
+                            .toList();
+                    List<TripTagResponse> tags = tripTagRepository.findByTripIdOrderByNameAsc(tripId)
+                            .stream()
+                            .map(tag -> toTagResponse(tag, tripId))
+                            .toList();
+
+                    return buildTripExport(trip, notes, checklist, documents, budgetItems, itinerary, tags);
+                });
+    }
+
     @Transactional
     public boolean deleteTripById(Long id) {
         if (id == null || !savedTripRepository.existsById(id)) {
             return false;
         }
 
+        tripTagRepository.deleteByTripId(id);
+        tripItineraryItemRepository.deleteByTripId(id);
         tripBudgetItemRepository.deleteByTripId(id);
         tripDocumentRepository.deleteByTripId(id);
         tripChecklistItemRepository.deleteByTripId(id);
@@ -594,6 +764,142 @@ public class SavedTripService {
         );
     }
 
+    private void applyItineraryRequest(TripItineraryItem item, TripItineraryItemRequest request) {
+        TripItineraryItemRequest safeRequest = request == null
+                ? new TripItineraryItemRequest(null, null, null, null, null, null)
+                : request;
+
+        item.setDayNumber(safeRequest.dayNumber() != null && safeRequest.dayNumber() > 0
+                ? safeRequest.dayNumber()
+                : 1);
+        item.setTitle(defaultString(safeRequest.title(), "Itinerary item"));
+        item.setDescription(defaultString(safeRequest.description(), "Trip activity"));
+        item.setLocation(defaultString(safeRequest.location(), "TBD"));
+        item.setStartTime(defaultTime(safeRequest.startTime(), LocalTime.of(9, 0)));
+        item.setEndTime(defaultTime(safeRequest.endTime(), LocalTime.of(10, 0)));
+    }
+
+    private TripItineraryItemResponse toItineraryResponse(TripItineraryItem item) {
+        return toItineraryResponse(item, null);
+    }
+
+    private TripItineraryItemResponse toItineraryResponse(TripItineraryItem item, Long fallbackTripId) {
+        Long tripId = item.getTrip() == null ? fallbackTripId : item.getTrip().getId();
+        Instant createdAt = item.getCreatedAt() == null ? Instant.now() : item.getCreatedAt();
+        Instant updatedAt = item.getUpdatedAt() == null ? createdAt : item.getUpdatedAt();
+
+        return new TripItineraryItemResponse(
+                item.getId(),
+                tripId,
+                item.getDayNumber() > 0 ? item.getDayNumber() : 1,
+                defaultString(item.getTitle(), "Itinerary item"),
+                defaultString(item.getDescription(), "Trip activity"),
+                defaultString(item.getLocation(), "TBD"),
+                defaultTime(item.getStartTime(), LocalTime.of(9, 0)),
+                defaultTime(item.getEndTime(), LocalTime.of(10, 0)),
+                createdAt,
+                updatedAt
+        );
+    }
+
+    private TripTagResponse toTagResponse(TripTag tag) {
+        return toTagResponse(tag, null);
+    }
+
+    private TripTagResponse toTagResponse(TripTag tag, Long fallbackTripId) {
+        Long tripId = tag.getTrip() == null ? fallbackTripId : tag.getTrip().getId();
+        Instant createdAt = tag.getCreatedAt() == null ? Instant.now() : tag.getCreatedAt();
+
+        return new TripTagResponse(
+                tag.getId(),
+                tripId,
+                defaultString(tag.getName(), "Trip tag"),
+                createdAt
+        );
+    }
+
+    private String buildTripExport(
+            SavedTripResponse trip,
+            List<TripNoteResponse> notes,
+            List<TripChecklistItemResponse> checklist,
+            List<TripDocumentResponse> documents,
+            List<TripBudgetItemResponse> budgetItems,
+            List<TripItineraryItemResponse> itinerary,
+            List<TripTagResponse> tags
+    ) {
+        StringBuilder export = new StringBuilder();
+        export.append("AI Travel Agent Trip Export\n");
+        export.append("===========================\n\n");
+        export.append("Trip\n");
+        export.append("----\n");
+        export.append("Origin: ").append(trip.origin()).append('\n');
+        export.append("Destination: ").append(trip.destination()).append('\n');
+        export.append("Budget: $").append(trip.budget()).append('\n');
+        export.append("Days: ").append(trip.days()).append('\n');
+        export.append("Favorite: ").append(trip.favorite()).append('\n');
+        export.append("User Message: ").append(trip.userMessage()).append("\n\n");
+
+        appendSection(export, "Tags");
+        for (TripTagResponse tag : tags) {
+            export.append("- ").append(tag.name()).append('\n');
+        }
+        appendEmptyLineForEmpty(export, tags);
+
+        appendSection(export, "Notes");
+        for (TripNoteResponse note : notes) {
+            export.append("- ").append(note.content()).append('\n');
+        }
+        appendEmptyLineForEmpty(export, notes);
+
+        appendSection(export, "Checklist");
+        for (TripChecklistItemResponse item : checklist) {
+            export.append("- [").append(item.completed() ? "x" : " ").append("] ")
+                    .append(item.title()).append('\n');
+        }
+        appendEmptyLineForEmpty(export, checklist);
+
+        appendSection(export, "Documents");
+        for (TripDocumentResponse document : documents) {
+            export.append("- ").append(document.name())
+                    .append(" (").append(document.type()).append("): ")
+                    .append(document.url()).append('\n');
+        }
+        appendEmptyLineForEmpty(export, documents);
+
+        appendSection(export, "Budget Items");
+        for (TripBudgetItemResponse item : budgetItems) {
+            export.append("- ").append(item.title())
+                    .append(" | ").append(item.category())
+                    .append(" | $").append(item.amount()).append('\n');
+        }
+        appendEmptyLineForEmpty(export, budgetItems);
+
+        appendSection(export, "Itinerary");
+        for (TripItineraryItemResponse item : itinerary) {
+            export.append("- Day ").append(item.dayNumber())
+                    .append(" | ").append(item.startTime()).append("-").append(item.endTime())
+                    .append(" | ").append(item.title())
+                    .append(" @ ").append(item.location())
+                    .append(" | ").append(item.description())
+                    .append('\n');
+        }
+        appendEmptyLineForEmpty(export, itinerary);
+
+        return export.toString();
+    }
+
+    private void appendSection(StringBuilder builder, String title) {
+        builder.append(title).append('\n');
+        builder.append("-".repeat(title.length())).append('\n');
+    }
+
+    private void appendEmptyLineForEmpty(StringBuilder builder, List<?> items) {
+        if (items.isEmpty()) {
+            builder.append("- None\n");
+        }
+        builder.append('\n');
+    }
+
     private String defaultString(String value, String defaultValue) {
         if (value == null || value.isBlank()) {
             return defaultValue;
@@ -603,6 +909,10 @@ public class SavedTripService {
 
     private BigDecimal defaultAmount(BigDecimal value) {
         return value == null ? BigDecimal.ZERO : value;
+    }
+
+    private LocalTime defaultTime(LocalTime value, LocalTime defaultValue) {
+        return value == null ? defaultValue : value;
     }
 
     private String findMostCommonDestination(List<SavedTrip> savedTrips) {
