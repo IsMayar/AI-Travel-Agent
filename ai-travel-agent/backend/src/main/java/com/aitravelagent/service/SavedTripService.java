@@ -1,5 +1,6 @@
 package com.aitravelagent.service;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -13,8 +14,12 @@ import org.springframework.transaction.annotation.Transactional;
 import com.aitravelagent.dto.SavedTripRequest;
 import com.aitravelagent.dto.SavedTripResponse;
 import com.aitravelagent.dto.TravelPreferencesResponse;
+import com.aitravelagent.dto.TripBudgetItemRequest;
+import com.aitravelagent.dto.TripBudgetItemResponse;
 import com.aitravelagent.dto.TripChecklistItemRequest;
 import com.aitravelagent.dto.TripChecklistItemResponse;
+import com.aitravelagent.dto.TripDocumentRequest;
+import com.aitravelagent.dto.TripDocumentResponse;
 import com.aitravelagent.dto.TripNoteRequest;
 import com.aitravelagent.dto.TripNoteResponse;
 import com.aitravelagent.dto.TripNoteUpdateRequest;
@@ -22,10 +27,14 @@ import com.aitravelagent.dto.TripRecommendationResponse;
 import com.aitravelagent.dto.TripRecommendationsResponse;
 import com.aitravelagent.dto.TripStatsResponse;
 import com.aitravelagent.entity.SavedTrip;
+import com.aitravelagent.entity.TripBudgetItem;
 import com.aitravelagent.entity.TripChecklistItem;
+import com.aitravelagent.entity.TripDocument;
 import com.aitravelagent.entity.TripNote;
 import com.aitravelagent.repository.SavedTripRepository;
+import com.aitravelagent.repository.TripBudgetItemRepository;
 import com.aitravelagent.repository.TripChecklistItemRepository;
+import com.aitravelagent.repository.TripDocumentRepository;
 import com.aitravelagent.repository.TripNoteRepository;
 
 @Service
@@ -35,17 +44,23 @@ public class SavedTripService {
     private final TravelPreferencesService travelPreferencesService;
     private final TripNoteRepository tripNoteRepository;
     private final TripChecklistItemRepository tripChecklistItemRepository;
+    private final TripDocumentRepository tripDocumentRepository;
+    private final TripBudgetItemRepository tripBudgetItemRepository;
 
     public SavedTripService(
             SavedTripRepository savedTripRepository,
             TravelPreferencesService travelPreferencesService,
             TripNoteRepository tripNoteRepository,
-            TripChecklistItemRepository tripChecklistItemRepository
+            TripChecklistItemRepository tripChecklistItemRepository,
+            TripDocumentRepository tripDocumentRepository,
+            TripBudgetItemRepository tripBudgetItemRepository
     ) {
         this.savedTripRepository = savedTripRepository;
         this.travelPreferencesService = travelPreferencesService;
         this.tripNoteRepository = tripNoteRepository;
         this.tripChecklistItemRepository = tripChecklistItemRepository;
+        this.tripDocumentRepository = tripDocumentRepository;
+        this.tripBudgetItemRepository = tripBudgetItemRepository;
     }
 
     public SavedTripResponse saveTrip(SavedTripRequest request) {
@@ -357,12 +372,130 @@ public class SavedTripService {
                 .orElse(false);
     }
 
+    public Optional<List<TripDocumentResponse>> getDocumentsForTrip(Long tripId) {
+        if (tripId == null || !savedTripRepository.existsById(tripId)) {
+            return Optional.empty();
+        }
+
+        List<TripDocumentResponse> documents = tripDocumentRepository.findByTripIdOrderByCreatedAtDesc(tripId)
+                .stream()
+                .map(document -> toDocumentResponse(document, tripId))
+                .toList();
+
+        return Optional.of(documents);
+    }
+
+    public Optional<TripDocumentResponse> addDocument(Long tripId, TripDocumentRequest request) {
+        if (tripId == null) {
+            return Optional.empty();
+        }
+
+        return savedTripRepository.findById(tripId)
+                .map(savedTrip -> {
+                    TripDocumentRequest safeRequest = request == null
+                            ? new TripDocumentRequest(null, null, null)
+                            : request;
+                    TripDocument document = new TripDocument();
+                    document.setTrip(savedTrip);
+                    document.setName(defaultString(safeRequest.name(), "Travel document"));
+                    document.setType(defaultString(safeRequest.type(), "Link"));
+                    document.setUrl(defaultString(safeRequest.url(), "https://example.com"));
+
+                    return toDocumentResponse(tripDocumentRepository.save(document));
+                });
+    }
+
+    @Transactional
+    public boolean deleteDocument(Long tripId, Long documentId) {
+        if (tripId == null || documentId == null || !savedTripRepository.existsById(tripId)) {
+            return false;
+        }
+
+        return tripDocumentRepository.findByIdAndTrip_Id(documentId, tripId)
+                .map(document -> {
+                    tripDocumentRepository.delete(document);
+                    return true;
+                })
+                .orElse(false);
+    }
+
+    public Optional<List<TripBudgetItemResponse>> getBudgetItemsForTrip(Long tripId) {
+        if (tripId == null || !savedTripRepository.existsById(tripId)) {
+            return Optional.empty();
+        }
+
+        List<TripBudgetItemResponse> budgetItems = tripBudgetItemRepository.findByTripIdOrderByCreatedAtAsc(tripId)
+                .stream()
+                .map(item -> toBudgetItemResponse(item, tripId))
+                .toList();
+
+        return Optional.of(budgetItems);
+    }
+
+    public Optional<TripBudgetItemResponse> addBudgetItem(Long tripId, TripBudgetItemRequest request) {
+        if (tripId == null) {
+            return Optional.empty();
+        }
+
+        return savedTripRepository.findById(tripId)
+                .map(savedTrip -> {
+                    TripBudgetItemRequest safeRequest = request == null
+                            ? new TripBudgetItemRequest(null, null, null)
+                            : request;
+                    TripBudgetItem item = new TripBudgetItem();
+                    item.setTrip(savedTrip);
+                    item.setTitle(defaultString(safeRequest.title(), "Budget item"));
+                    item.setCategory(defaultString(safeRequest.category(), "General"));
+                    item.setAmount(defaultAmount(safeRequest.amount()));
+
+                    return toBudgetItemResponse(tripBudgetItemRepository.save(item));
+                });
+    }
+
+    public Optional<TripBudgetItemResponse> updateBudgetItem(
+            Long tripId,
+            Long itemId,
+            TripBudgetItemRequest request
+    ) {
+        if (tripId == null || itemId == null || !savedTripRepository.existsById(tripId)) {
+            return Optional.empty();
+        }
+
+        return tripBudgetItemRepository.findByIdAndTrip_Id(itemId, tripId)
+                .map(item -> {
+                    TripBudgetItemRequest safeRequest = request == null
+                            ? new TripBudgetItemRequest(null, null, null)
+                            : request;
+                    item.setTitle(defaultString(safeRequest.title(), "Budget item"));
+                    item.setCategory(defaultString(safeRequest.category(), "General"));
+                    item.setAmount(defaultAmount(safeRequest.amount()));
+
+                    return toBudgetItemResponse(tripBudgetItemRepository.save(item), tripId);
+                });
+    }
+
+    @Transactional
+    public boolean deleteBudgetItem(Long tripId, Long itemId) {
+        if (tripId == null || itemId == null || !savedTripRepository.existsById(tripId)) {
+            return false;
+        }
+
+        return tripBudgetItemRepository.findByIdAndTrip_Id(itemId, tripId)
+                .map(item -> {
+                    tripBudgetItemRepository.delete(item);
+                    return true;
+                })
+                .orElse(false);
+    }
+
     @Transactional
     public boolean deleteTripById(Long id) {
         if (id == null || !savedTripRepository.existsById(id)) {
             return false;
         }
 
+        tripBudgetItemRepository.deleteByTripId(id);
+        tripDocumentRepository.deleteByTripId(id);
         tripChecklistItemRepository.deleteByTripId(id);
         tripNoteRepository.deleteByTripId(id);
         savedTripRepository.deleteById(id);
@@ -423,11 +556,53 @@ public class SavedTripService {
         );
     }
 
+    private TripDocumentResponse toDocumentResponse(TripDocument document) {
+        return toDocumentResponse(document, null);
+    }
+
+    private TripDocumentResponse toDocumentResponse(TripDocument document, Long fallbackTripId) {
+        Long tripId = document.getTrip() == null ? fallbackTripId : document.getTrip().getId();
+        Instant createdAt = document.getCreatedAt() == null ? Instant.now() : document.getCreatedAt();
+
+        return new TripDocumentResponse(
+                document.getId(),
+                tripId,
+                defaultString(document.getName(), "Travel document"),
+                defaultString(document.getType(), "Link"),
+                defaultString(document.getUrl(), "https://example.com"),
+                createdAt
+        );
+    }
+
+    private TripBudgetItemResponse toBudgetItemResponse(TripBudgetItem item) {
+        return toBudgetItemResponse(item, null);
+    }
+
+    private TripBudgetItemResponse toBudgetItemResponse(TripBudgetItem item, Long fallbackTripId) {
+        Long tripId = item.getTrip() == null ? fallbackTripId : item.getTrip().getId();
+        Instant createdAt = item.getCreatedAt() == null ? Instant.now() : item.getCreatedAt();
+        Instant updatedAt = item.getUpdatedAt() == null ? createdAt : item.getUpdatedAt();
+
+        return new TripBudgetItemResponse(
+                item.getId(),
+                tripId,
+                defaultString(item.getTitle(), "Budget item"),
+                defaultString(item.getCategory(), "General"),
+                defaultAmount(item.getAmount()),
+                createdAt,
+                updatedAt
+        );
+    }
+
     private String defaultString(String value, String defaultValue) {
         if (value == null || value.isBlank()) {
             return defaultValue;
         }
         return value.trim();
+    }
+
+    private BigDecimal defaultAmount(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
     }
 
     private String findMostCommonDestination(List<SavedTrip> savedTrips) {

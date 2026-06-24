@@ -16,8 +16,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.aitravelagent.dto.SavedTripRequest;
 import com.aitravelagent.dto.SavedTripResponse;
+import com.aitravelagent.dto.TripBudgetItemRequest;
+import com.aitravelagent.dto.TripBudgetItemResponse;
 import com.aitravelagent.dto.TripChecklistItemRequest;
 import com.aitravelagent.dto.TripChecklistItemResponse;
+import com.aitravelagent.dto.TripDocumentRequest;
+import com.aitravelagent.dto.TripDocumentResponse;
 import com.aitravelagent.dto.TripNoteRequest;
 import com.aitravelagent.dto.TripNoteResponse;
 import com.aitravelagent.dto.TripNoteUpdateRequest;
@@ -179,6 +183,75 @@ public class TripController {
             @PathVariable Long itemId
     ) {
         if (!savedTripService.deleteChecklistItem(tripId, itemId)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{tripId}/documents")
+    public ResponseEntity<List<TripDocumentResponse>> getTripDocuments(@PathVariable Long tripId) {
+        return savedTripService.getDocumentsForTrip(tripId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/{tripId}/documents")
+    public ResponseEntity<TripDocumentResponse> addTripDocument(
+            @PathVariable Long tripId,
+            @RequestBody TripDocumentRequest request
+    ) {
+        return savedTripService.addDocument(tripId, request)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{tripId}/documents/{documentId}")
+    public ResponseEntity<Void> deleteTripDocument(
+            @PathVariable Long tripId,
+            @PathVariable Long documentId
+    ) {
+        if (!savedTripService.deleteDocument(tripId, documentId)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{tripId}/budget-items")
+    public ResponseEntity<List<TripBudgetItemResponse>> getTripBudgetItems(@PathVariable Long tripId) {
+        return savedTripService.getBudgetItemsForTrip(tripId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/{tripId}/budget-items")
+    public ResponseEntity<TripBudgetItemResponse> addTripBudgetItem(
+            @PathVariable Long tripId,
+            @RequestBody TripBudgetItemRequest request
+    ) {
+        return savedTripService.addBudgetItem(tripId, request)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/{tripId}/budget-items/{itemId}")
+    public ResponseEntity<TripBudgetItemResponse> updateTripBudgetItem(
+            @PathVariable Long tripId,
+            @PathVariable Long itemId,
+            @RequestBody TripBudgetItemRequest request
+    ) {
+        return savedTripService.updateBudgetItem(tripId, itemId, request)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{tripId}/budget-items/{itemId}")
+    public ResponseEntity<Void> deleteTripBudgetItem(
+            @PathVariable Long tripId,
+            @PathVariable Long itemId
+    ) {
+        if (!savedTripService.deleteBudgetItem(tripId, itemId)) {
             return ResponseEntity.notFound().build();
         }
 

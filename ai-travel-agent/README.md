@@ -287,6 +287,84 @@ Deletes a checklist item. Returns `204 No Content` when deleted.
 
 Trip note and checklist endpoints return `404 Not Found` when the saved trip does not exist, the child item does not exist, or the child item does not belong to the specified trip.
 
+### Trip Documents
+
+```http
+GET /api/trips/{tripId}/documents
+```
+
+Returns document metadata for a saved trip ordered by newest first.
+
+```http
+POST /api/trips/{tripId}/documents
+```
+
+Request:
+
+```json
+{
+  "name": "Passport scan",
+  "type": "Passport",
+  "url": "https://example.com/passport"
+}
+```
+
+Creates a text-only document metadata record. The MVP does not upload or store real files.
+
+```http
+DELETE /api/trips/{tripId}/documents/{documentId}
+```
+
+Deletes one document metadata record. Returns `204 No Content` when deleted.
+
+### Trip Budget Items
+
+```http
+GET /api/trips/{tripId}/budget-items
+```
+
+Returns budget items for a saved trip ordered by oldest first.
+
+```http
+POST /api/trips/{tripId}/budget-items
+```
+
+Request:
+
+```json
+{
+  "title": "Flight",
+  "category": "Transport",
+  "amount": 850.00
+}
+```
+
+Creates a budget item.
+
+```http
+PUT /api/trips/{tripId}/budget-items/{itemId}
+```
+
+Request:
+
+```json
+{
+  "title": "Airport taxi",
+  "category": "Ground transport",
+  "amount": 65.25
+}
+```
+
+Updates an existing budget item and returns the updated item.
+
+```http
+DELETE /api/trips/{tripId}/budget-items/{itemId}
+```
+
+Deletes one budget item. Returns `204 No Content` when deleted.
+
+Trip document and budget item endpoints return `404 Not Found` when the saved trip does not exist, the child item does not exist, or the child item does not belong to the specified trip.
+
 ## Project Structure
 
 ```text

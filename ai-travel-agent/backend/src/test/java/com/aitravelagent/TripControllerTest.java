@@ -41,6 +41,8 @@ class TripControllerTest {
 
     @BeforeEach
     void cleanDatabase() {
+        jdbcTemplate.update("DELETE FROM trip_budget_items");
+        jdbcTemplate.update("DELETE FROM trip_documents");
         jdbcTemplate.update("DELETE FROM trip_checklist_items");
         jdbcTemplate.update("DELETE FROM trip_notes");
         jdbcTemplate.update("DELETE FROM travel_preferences");
@@ -871,7 +873,283 @@ class TripControllerTest {
     }
 
     @Test
-    void deleteTripRemovesSavedTripWithNotesAndChecklistItems() throws Exception {
+    void getTripDocumentsReturnsDocumentsNewestFirst() throws Exception {
+        Integer tripId = saveBasicTrip("Document trip", "Dubai");
+        insertTripDocument(
+                tripId,
+                "Older passport scan",
+                "Passport",
+                "https://example.com/passport-old",
+                Instant.parse("2026-01-01T00:00:00Z")
+        );
+        insertTripDocument(
+                tripId,
+                "Newer hotel voucher",
+                "Voucher",
+                "https://example.com/hotel",
+                Instant.parse("2026-01-02T00:00:00Z")
+        );
+
+        mockMvc.perform(get("/api/trips/{tripId}/documents", tripId))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].tripId").value(tripId))
+                .andExpect(jsonPath("$[0].name").value("Newer hotel voucher"))
+                .andExpect(jsonPath("$[0].type").value("Voucher"))
+                .andExpect(jsonPath("$[0].url").value("https://example.com/hotel"))
+                .andExpect(jsonPath("$[0].createdAt").isNotEmpty())
+                .andExpect(jsonPath("$[1].name").value("Older passport scan"));
+    }
+
+    @Test
+    void getTripDocumentsReturnsEmptyListForTripWithoutDocuments() throws Exception {
+        Integer tripId = saveBasicTrip("Empty document trip", "Denver");
+
+        mockMvc.perform(get("/api/trips/{tripId}/documents", tripId))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void getTripDocumentsReturnsNotFoundForMissingTrip() throws Exception {
+        mockMvc.perform(get("/api/trips/{tripId}/documents", 999999L))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void addTripDocumentCreatesMetadataOnlyDocument() throws Exception {
+        Integer tripId = saveBasicTrip("Create document trip", "Tokyo");
+
+        mockMvc.perform(post("/api/trips/{tripId}/documents", tripId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Passport scan",
+                                  "type": "Passport",
+                                  "url": "https://example.com/passport"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id").isNumber())
+                .andExpect(jsonPath("$.tripId").value(tripId))
+                .andExpect(jsonPath("$.name").value("Passport scan"))
+                .andExpect(jsonPath("$.type").value("Passport"))
+                .andExpect(jsonPath("$.url").value("https://example.com/passport"))
+                .andExpect(jsonPath("$.createdAt").isNotEmpty());
+    }
+
+    @Test
+    void addTripDocumentReturnsNotFoundForMissingTrip() throws Exception {
+        mockMvc.perform(post("/api/trips/{tripId}/documents", 999999L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Missing document",
+                                  "type": "Link",
+                                  "url": "https://example.com/missing"
+                                }
+                                """))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deleteTripDocumentRemovesDocument() throws Exception {
+        Integer tripId = saveBasicTrip("Delete document trip", "Porto");
+        Integer documentId = createTripDocument(tripId, "Insurance PDF", "Insurance", "https://example.com/insurance");
+
+        mockMvc.perform(delete("/api/trips/{tripId}/documents/{documentId}", tripId, documentId))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
+
+        mockMvc.perform(get("/api/trips/{tripId}/documents", tripId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void deleteTripDocumentReturnsNotFoundWhenDocumentBelongsToAnotherTrip() throws Exception {
+        Integer firstTripId = saveBasicTrip("First document trip", "Dubai");
+        Integer secondTripId = saveBasicTrip("Second document trip", "Lisbon");
+        Integer documentId = createTripDocument(firstTripId, "Visa link", "Visa", "https://example.com/visa");
+
+        mockMvc.perform(delete("/api/trips/{tripId}/documents/{documentId}", secondTripId, documentId))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/api/trips/{tripId}/documents", firstTripId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(documentId));
+    }
+
+    @Test
+    void getTripBudgetItemsReturnsItemsOldestFirst() throws Exception {
+        Integer tripId = saveBasicTrip("Budget trip", "Dubai");
+        insertTripBudgetItem(tripId, "Flight", "Transport", 850.00, Instant.parse("2026-01-01T00:00:00Z"));
+        insertTripBudgetItem(tripId, "Hotel", "Lodging", 450.50, Instant.parse("2026-01-02T00:00:00Z"));
+
+        mockMvc.perform(get("/api/trips/{tripId}/budget-items", tripId))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].tripId").value(tripId))
+                .andExpect(jsonPath("$[0].title").value("Flight"))
+                .andExpect(jsonPath("$[0].category").value("Transport"))
+                .andExpect(jsonPath("$[0].amount").value(850.00))
+                .andExpect(jsonPath("$[0].createdAt").isNotEmpty())
+                .andExpect(jsonPath("$[0].updatedAt").isNotEmpty())
+                .andExpect(jsonPath("$[1].title").value("Hotel"))
+                .andExpect(jsonPath("$[1].amount").value(450.50));
+    }
+
+    @Test
+    void getTripBudgetItemsReturnsEmptyListForTripWithoutItems() throws Exception {
+        Integer tripId = saveBasicTrip("Empty budget trip", "Denver");
+
+        mockMvc.perform(get("/api/trips/{tripId}/budget-items", tripId))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void getTripBudgetItemsReturnsNotFoundForMissingTrip() throws Exception {
+        mockMvc.perform(get("/api/trips/{tripId}/budget-items", 999999L))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void addTripBudgetItemCreatesItem() throws Exception {
+        Integer tripId = saveBasicTrip("Create budget trip", "Tokyo");
+
+        mockMvc.perform(post("/api/trips/{tripId}/budget-items", tripId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Museum tickets",
+                                  "category": "Activities",
+                                  "amount": 120.75
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id").isNumber())
+                .andExpect(jsonPath("$.tripId").value(tripId))
+                .andExpect(jsonPath("$.title").value("Museum tickets"))
+                .andExpect(jsonPath("$.category").value("Activities"))
+                .andExpect(jsonPath("$.amount").value(120.75))
+                .andExpect(jsonPath("$.createdAt").isNotEmpty())
+                .andExpect(jsonPath("$.updatedAt").isNotEmpty());
+    }
+
+    @Test
+    void addTripBudgetItemReturnsNotFoundForMissingTrip() throws Exception {
+        mockMvc.perform(post("/api/trips/{tripId}/budget-items", 999999L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Missing budget",
+                                  "category": "General",
+                                  "amount": 25.00
+                                }
+                                """))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void updateTripBudgetItemChangesFields() throws Exception {
+        Integer tripId = saveBasicTrip("Update budget trip", "Rome");
+        Integer itemId = createTripBudgetItem(tripId, "Taxi", "Transport", 45.00);
+
+        mockMvc.perform(put("/api/trips/{tripId}/budget-items/{itemId}", tripId, itemId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Airport taxi",
+                                  "category": "Ground transport",
+                                  "amount": 65.25
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(itemId))
+                .andExpect(jsonPath("$.tripId").value(tripId))
+                .andExpect(jsonPath("$.title").value("Airport taxi"))
+                .andExpect(jsonPath("$.category").value("Ground transport"))
+                .andExpect(jsonPath("$.amount").value(65.25))
+                .andExpect(jsonPath("$.updatedAt").isNotEmpty());
+    }
+
+    @Test
+    void updateTripBudgetItemReturnsNotFoundForMissingItem() throws Exception {
+        Integer tripId = saveBasicTrip("Missing budget item trip", "Seoul");
+
+        mockMvc.perform(put("/api/trips/{tripId}/budget-items/{itemId}", tripId, 999999L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Missing item",
+                                  "category": "General",
+                                  "amount": 30.00
+                                }
+                                """))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void updateTripBudgetItemReturnsNotFoundWhenItemBelongsToAnotherTrip() throws Exception {
+        Integer firstTripId = saveBasicTrip("First budget update trip", "Dubai");
+        Integer secondTripId = saveBasicTrip("Second budget update trip", "Lisbon");
+        Integer itemId = createTripBudgetItem(firstTripId, "Keep this cost", "General", 15.00);
+
+        mockMvc.perform(put("/api/trips/{tripId}/budget-items/{itemId}", secondTripId, itemId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Wrong trip update",
+                                  "category": "General",
+                                  "amount": 99.00
+                                }
+                                """))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/api/trips/{tripId}/budget-items", firstTripId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].title").value("Keep this cost"));
+    }
+
+    @Test
+    void deleteTripBudgetItemRemovesItem() throws Exception {
+        Integer tripId = saveBasicTrip("Delete budget trip", "Porto");
+        Integer itemId = createTripBudgetItem(tripId, "Metro card", "Transport", 20.00);
+
+        mockMvc.perform(delete("/api/trips/{tripId}/budget-items/{itemId}", tripId, itemId))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
+
+        mockMvc.perform(get("/api/trips/{tripId}/budget-items", tripId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void deleteTripBudgetItemReturnsNotFoundWhenItemBelongsToAnotherTrip() throws Exception {
+        Integer firstTripId = saveBasicTrip("First budget delete trip", "Dubai");
+        Integer secondTripId = saveBasicTrip("Second budget delete trip", "Tokyo");
+        Integer itemId = createTripBudgetItem(firstTripId, "Keep this budget item", "General", 33.00);
+
+        mockMvc.perform(delete("/api/trips/{tripId}/budget-items/{itemId}", secondTripId, itemId))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/api/trips/{tripId}/budget-items", firstTripId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(itemId));
+    }
+
+    @Test
+    void deleteTripRemovesSavedTripWithAllChildResources() throws Exception {
         MvcResult saveResult = mockMvc.perform(post("/api/trips/save")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -901,6 +1179,26 @@ class TripControllerTest {
                         .content("""
                                 {
                                   "title": "Pack luggage"
+                                }
+                                """))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/trips/{tripId}/documents", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Passport",
+                                  "type": "Passport",
+                                  "url": "https://example.com/passport"
+                                }
+                                """))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/trips/{tripId}/budget-items", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Flight",
+                                  "category": "Transport",
+                                  "amount": 850.00
                                 }
                                 """))
                 .andExpect(status().isOk());
@@ -1086,6 +1384,43 @@ class TripControllerTest {
         return JsonPath.read(itemResult.getResponse().getContentAsString(), "$.id");
     }
 
+    private Integer createTripDocument(Integer tripId, String name, String type, String url) throws Exception {
+        MvcResult documentResult = mockMvc.perform(post("/api/trips/{tripId}/documents", tripId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "%s",
+                                  "type": "%s",
+                                  "url": "%s"
+                                }
+                                """.formatted(name, type, url)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        return JsonPath.read(documentResult.getResponse().getContentAsString(), "$.id");
+    }
+
+    private Integer createTripBudgetItem(
+            Integer tripId,
+            String title,
+            String category,
+            double amount
+    ) throws Exception {
+        MvcResult itemResult = mockMvc.perform(post("/api/trips/{tripId}/budget-items", tripId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "%s",
+                                  "category": "%s",
+                                  "amount": %s
+                                }
+                                """.formatted(title, category, Double.toString(amount))))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        return JsonPath.read(itemResult.getResponse().getContentAsString(), "$.id");
+    }
+
     private void insertSavedTrip(String userMessage, String origin, String destination, Instant createdAt) {
         insertSavedTrip(userMessage, origin, destination, 1500, false, createdAt);
     }
@@ -1149,6 +1484,58 @@ class TripControllerTest {
                 tripId,
                 title,
                 completed,
+                Timestamp.from(createdAt)
+        );
+    }
+
+    private void insertTripDocument(
+            Integer tripId,
+            String name,
+            String type,
+            String url,
+            Instant createdAt
+    ) {
+        jdbcTemplate.update("""
+                INSERT INTO trip_documents (
+                  trip_id,
+                  name,
+                  type,
+                  url,
+                  created_at
+                )
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                tripId,
+                name,
+                type,
+                url,
+                Timestamp.from(createdAt)
+        );
+    }
+
+    private void insertTripBudgetItem(
+            Integer tripId,
+            String title,
+            String category,
+            double amount,
+            Instant createdAt
+    ) {
+        jdbcTemplate.update("""
+                INSERT INTO trip_budget_items (
+                  trip_id,
+                  title,
+                  category,
+                  amount,
+                  created_at,
+                  updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                tripId,
+                title,
+                category,
+                amount,
+                Timestamp.from(createdAt),
                 Timestamp.from(createdAt)
         );
     }
