@@ -1,8 +1,15 @@
+import { useEffect } from "react";
+
+import { useAppDispatch, useAppSelector } from "./app/hooks";
 import { Layout } from "./components/Layout";
+import { useGetMeQuery } from "./features/auth/authApi";
+import { logout, setUser } from "./features/auth/authSlice";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LandingPage } from "./pages/LandingPage";
+import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { PreferencesPage } from "./pages/PreferencesPage";
+import { RegisterPage } from "./pages/RegisterPage";
 import { SavedTripsPage } from "./pages/SavedTripsPage";
 import { TripDetailsPage } from "./pages/TripDetailsPage";
 import { TripPlannerPage } from "./pages/TripPlannerPage";
@@ -15,11 +22,17 @@ function normalizePath(pathname: string) {
   return pathname;
 }
 
-function renderPage() {
-  const path = normalizePath(window.location.pathname);
-
+function renderPage(path: string) {
   if (path === "/") {
     return <LandingPage />;
+  }
+
+  if (path === "/login") {
+    return <LoginPage />;
+  }
+
+  if (path === "/register") {
+    return <RegisterPage />;
   }
 
   if (path === "/planner") {
@@ -47,5 +60,38 @@ function renderPage() {
 }
 
 export function App() {
-  return <Layout>{renderPage()}</Layout>;
+  const dispatch = useAppDispatch();
+  const { token } = useAppSelector((state) => state.auth);
+  const meQuery = useGetMeQuery(undefined, { skip: !token });
+  const path = normalizePath(window.location.pathname);
+  const isAuthRoute = path === "/login" || path === "/register";
+
+  useEffect(() => {
+    if (meQuery.data) {
+      dispatch(setUser(meQuery.data));
+    }
+  }, [dispatch, meQuery.data]);
+
+  useEffect(() => {
+    if (meQuery.isError) {
+      dispatch(logout());
+      window.history.replaceState(null, "", "/login");
+    }
+  }, [dispatch, meQuery.isError]);
+
+  if (!token && !isAuthRoute) {
+    window.history.replaceState(null, "", "/login");
+    return (
+      <Layout>
+        <LoginPage />
+      </Layout>
+    );
+  }
+
+  if (token && isAuthRoute) {
+    window.history.replaceState(null, "", "/");
+    return <Layout>{renderPage("/")}</Layout>;
+  }
+
+  return <Layout>{renderPage(path)}</Layout>;
 }

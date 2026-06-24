@@ -163,6 +163,21 @@ li + li {
   color: #0f6f67;
 }
 
+.nav-auth {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-auth span {
+  max-width: 180px;
+  overflow: hidden;
+  color: #243241;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .nav-cta,
 .primary-button,
 .secondary-button {
@@ -358,6 +373,61 @@ li + li {
 .simple-page {
   min-height: 62vh;
   padding: 86px 0;
+}
+
+.auth-page {
+  display: grid;
+  min-height: calc(100vh - 72px);
+  align-items: center;
+  padding: 72px 0;
+}
+
+.auth-container {
+  display: grid;
+  justify-items: center;
+}
+
+.auth-card {
+  width: min(100%, 560px);
+  border: 1px solid rgba(30, 51, 61, 0.1);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(27, 40, 54, 0.12);
+  padding: 30px;
+}
+
+.auth-card h1 {
+  margin-bottom: 14px;
+  font-size: 2.35rem;
+  line-height: 1.05;
+}
+
+.auth-card > p {
+  margin-bottom: 22px;
+}
+
+.auth-form {
+  display: grid;
+  gap: 16px;
+}
+
+.auth-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.auth-form .primary-button {
+  width: 100%;
+}
+
+.auth-switch {
+  margin: 18px 0 0;
+  text-align: center;
+}
+
+.auth-switch a {
+  color: #0f6f67;
+  font-weight: 900;
 }
 
 .section-title {
@@ -1484,6 +1554,12 @@ textarea:focus {
     display: none;
   }
 
+  .nav-auth {
+    order: 3;
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .hero-section {
     min-height: 68vh;
     padding: 76px 0 54px;
@@ -1520,6 +1596,14 @@ textarea:focus {
 
   .planner-grid h1 {
     font-size: 2.35rem;
+  }
+
+  .auth-card {
+    padding: 22px;
+  }
+
+  .auth-card h1 {
+    font-size: 1.9rem;
   }
 
   .planner-card {
