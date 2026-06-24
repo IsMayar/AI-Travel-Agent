@@ -209,6 +209,84 @@ DELETE /api/trips/{id}
 
 Deletes one saved trip by id. Returns `204 No Content` when deleted and `404 Not Found` when the saved trip does not exist.
 
+### Trip Notes
+
+```http
+GET /api/trips/{tripId}/notes
+```
+
+Returns notes for a saved trip ordered by newest first.
+
+```http
+POST /api/trips/{tripId}/notes
+```
+
+Request:
+
+```json
+{
+  "content": "Ask for a hotel near the metro."
+}
+```
+
+Creates a note for the saved trip.
+
+```http
+PUT /api/trips/{tripId}/notes/{noteId}
+```
+
+Request:
+
+```json
+{
+  "content": "Updated note content."
+}
+```
+
+Updates an existing note and returns the updated note.
+
+```http
+DELETE /api/trips/{tripId}/notes/{noteId}
+```
+
+Deletes a note from the saved trip. Returns `204 No Content` when deleted.
+
+### Trip Checklist
+
+```http
+GET /api/trips/{tripId}/checklist
+```
+
+Returns checklist items for a saved trip ordered by oldest first.
+
+```http
+POST /api/trips/{tripId}/checklist
+```
+
+Request:
+
+```json
+{
+  "title": "Pack passport"
+}
+```
+
+Creates a checklist item with `completed` set to `false`.
+
+```http
+PATCH /api/trips/{tripId}/checklist/{itemId}
+```
+
+Toggles the checklist item completed status and returns the updated item.
+
+```http
+DELETE /api/trips/{tripId}/checklist/{itemId}
+```
+
+Deletes a checklist item. Returns `204 No Content` when deleted.
+
+Trip note and checklist endpoints return `404 Not Found` when the saved trip does not exist, the child item does not exist, or the child item does not belong to the specified trip.
+
 ## Project Structure
 
 ```text

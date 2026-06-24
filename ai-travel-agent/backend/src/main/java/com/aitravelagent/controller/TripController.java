@@ -16,8 +16,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.aitravelagent.dto.SavedTripRequest;
 import com.aitravelagent.dto.SavedTripResponse;
+import com.aitravelagent.dto.TripChecklistItemRequest;
+import com.aitravelagent.dto.TripChecklistItemResponse;
 import com.aitravelagent.dto.TripNoteRequest;
 import com.aitravelagent.dto.TripNoteResponse;
+import com.aitravelagent.dto.TripNoteUpdateRequest;
 import com.aitravelagent.dto.TripPlanRequest;
 import com.aitravelagent.dto.TripPlanResponse;
 import com.aitravelagent.dto.TripRecommendationsResponse;
@@ -120,12 +123,62 @@ public class TripController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @PutMapping("/{tripId}/notes/{noteId}")
+    public ResponseEntity<TripNoteResponse> updateTripNote(
+            @PathVariable Long tripId,
+            @PathVariable Long noteId,
+            @RequestBody TripNoteUpdateRequest request
+    ) {
+        return savedTripService.updateNote(tripId, noteId, request)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
     @DeleteMapping("/{tripId}/notes/{noteId}")
     public ResponseEntity<Void> deleteTripNote(
             @PathVariable Long tripId,
             @PathVariable Long noteId
     ) {
         if (!savedTripService.deleteNote(tripId, noteId)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{tripId}/checklist")
+    public ResponseEntity<List<TripChecklistItemResponse>> getTripChecklist(@PathVariable Long tripId) {
+        return savedTripService.getChecklistForTrip(tripId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/{tripId}/checklist")
+    public ResponseEntity<TripChecklistItemResponse> addTripChecklistItem(
+            @PathVariable Long tripId,
+            @RequestBody TripChecklistItemRequest request
+    ) {
+        return savedTripService.addChecklistItem(tripId, request)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PatchMapping("/{tripId}/checklist/{itemId}")
+    public ResponseEntity<TripChecklistItemResponse> toggleTripChecklistItem(
+            @PathVariable Long tripId,
+            @PathVariable Long itemId
+    ) {
+        return savedTripService.toggleChecklistItem(tripId, itemId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{tripId}/checklist/{itemId}")
+    public ResponseEntity<Void> deleteTripChecklistItem(
+            @PathVariable Long tripId,
+            @PathVariable Long itemId
+    ) {
+        if (!savedTripService.deleteChecklistItem(tripId, itemId)) {
             return ResponseEntity.notFound().build();
         }
 

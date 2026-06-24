@@ -13,14 +13,19 @@ import org.springframework.transaction.annotation.Transactional;
 import com.aitravelagent.dto.SavedTripRequest;
 import com.aitravelagent.dto.SavedTripResponse;
 import com.aitravelagent.dto.TravelPreferencesResponse;
+import com.aitravelagent.dto.TripChecklistItemRequest;
+import com.aitravelagent.dto.TripChecklistItemResponse;
 import com.aitravelagent.dto.TripNoteRequest;
 import com.aitravelagent.dto.TripNoteResponse;
+import com.aitravelagent.dto.TripNoteUpdateRequest;
 import com.aitravelagent.dto.TripRecommendationResponse;
 import com.aitravelagent.dto.TripRecommendationsResponse;
 import com.aitravelagent.dto.TripStatsResponse;
 import com.aitravelagent.entity.SavedTrip;
+import com.aitravelagent.entity.TripChecklistItem;
 import com.aitravelagent.entity.TripNote;
 import com.aitravelagent.repository.SavedTripRepository;
+import com.aitravelagent.repository.TripChecklistItemRepository;
 import com.aitravelagent.repository.TripNoteRepository;
 
 @Service
@@ -29,15 +34,18 @@ public class SavedTripService {
     private final SavedTripRepository savedTripRepository;
     private final TravelPreferencesService travelPreferencesService;
     private final TripNoteRepository tripNoteRepository;
+    private final TripChecklistItemRepository tripChecklistItemRepository;
 
     public SavedTripService(
             SavedTripRepository savedTripRepository,
             TravelPreferencesService travelPreferencesService,
-            TripNoteRepository tripNoteRepository
+            TripNoteRepository tripNoteRepository,
+            TripChecklistItemRepository tripChecklistItemRepository
     ) {
         this.savedTripRepository = savedTripRepository;
         this.travelPreferencesService = travelPreferencesService;
         this.tripNoteRepository = tripNoteRepository;
+        this.tripChecklistItemRepository = tripChecklistItemRepository;
     }
 
     public SavedTripResponse saveTrip(SavedTripRequest request) {
@@ -240,6 +248,26 @@ public class SavedTripService {
                 });
     }
 
+    public Optional<TripNoteResponse> updateNote(
+            Long tripId,
+            Long noteId,
+            TripNoteUpdateRequest request
+    ) {
+        if (tripId == null || noteId == null || !savedTripRepository.existsById(tripId)) {
+            return Optional.empty();
+        }
+
+        return tripNoteRepository.findByIdAndTrip_Id(noteId, tripId)
+                .map(note -> {
+                    TripNoteUpdateRequest safeRequest = request == null
+                            ? new TripNoteUpdateRequest(null)
+                            : request;
+                    note.setContent(defaultString(safeRequest.content(), "Trip note"));
+
+                    return toNoteResponse(tripNoteRepository.save(note), tripId);
+                });
+    }
+
     public Optional<List<TripNoteResponse>> getNotesForTrip(Long tripId) {
         if (tripId == null || !savedTripRepository.existsById(tripId)) {
             return Optional.empty();
@@ -267,12 +295,75 @@ public class SavedTripService {
                 .orElse(false);
     }
 
+    public Optional<List<TripChecklistItemResponse>> getChecklistForTrip(Long tripId) {
+        if (tripId == null || !savedTripRepository.existsById(tripId)) {
+            return Optional.empty();
+        }
+
+        List<TripChecklistItemResponse> checklist = tripChecklistItemRepository
+                .findByTripIdOrderByCreatedAtAsc(tripId)
+                .stream()
+                .map(item -> toChecklistResponse(item, tripId))
+                .toList();
+
+        return Optional.of(checklist);
+    }
+
+    public Optional<TripChecklistItemResponse> addChecklistItem(
+            Long tripId,
+            TripChecklistItemRequest request
+    ) {
+        if (tripId == null) {
+            return Optional.empty();
+        }
+
+        return savedTripRepository.findById(tripId)
+                .map(savedTrip -> {
+                    TripChecklistItemRequest safeRequest = request == null
+                            ? new TripChecklistItemRequest(null)
+                            : request;
+                    TripChecklistItem item = new TripChecklistItem();
+                    item.setTrip(savedTrip);
+                    item.setTitle(defaultString(safeRequest.title(), "Checklist item"));
+                    item.setCompleted(false);
+
+                    return toChecklistResponse(tripChecklistItemRepository.save(item));
+                });
+    }
+
+    public Optional<TripChecklistItemResponse> toggleChecklistItem(Long tripId, Long itemId) {
+        if (tripId == null || itemId == null || !savedTripRepository.existsById(tripId)) {
+            return Optional.empty();
+        }
+
+        return tripChecklistItemRepository.findByIdAndTrip_Id(itemId, tripId)
+                .map(item -> {
+                    item.setCompleted(!item.isCompleted());
+                    return toChecklistResponse(tripChecklistItemRepository.save(item), tripId);
+                });
+    }
+
+    @Transactional
+    public boolean deleteChecklistItem(Long tripId, Long itemId) {
+        if (tripId == null || itemId == null || !savedTripRepository.existsById(tripId)) {
+            return false;
+        }
+
+        return tripChecklistItemRepository.findByIdAndTrip_Id(itemId, tripId)
+                .map(item -> {
+                    tripChecklistItemRepository.delete(item);
+                    return true;
+                })
+                .orElse(false);
+    }
+
     @Transactional
     public boolean deleteTripById(Long id) {
         if (id == null || !savedTripRepository.existsById(id)) {
             return false;
         }
 
+        tripChecklistItemRepository.deleteByTripId(id);
         tripNoteRepository.deleteByTripId(id);
         savedTripRepository.deleteById(id);
         return true;
@@ -311,6 +402,23 @@ public class SavedTripService {
                 note.getId(),
                 tripId,
                 defaultString(note.getContent(), "Trip note"),
+                createdAt
+        );
+    }
+
+    private TripChecklistItemResponse toChecklistResponse(TripChecklistItem item) {
+        return toChecklistResponse(item, null);
+    }
+
+    private TripChecklistItemResponse toChecklistResponse(TripChecklistItem item, Long fallbackTripId) {
+        Long tripId = item.getTrip() == null ? fallbackTripId : item.getTrip().getId();
+        Instant createdAt = item.getCreatedAt() == null ? Instant.now() : item.getCreatedAt();
+
+        return new TripChecklistItemResponse(
+                item.getId(),
+                tripId,
+                defaultString(item.getTitle(), "Checklist item"),
+                item.isCompleted(),
                 createdAt
         );
     }
