@@ -1064,7 +1064,9 @@ textarea:focus {
 }
 
 .trip-notes-card,
-.trip-checklist-card {
+.trip-checklist-card,
+.trip-documents-card,
+.trip-budget-card {
   display: grid;
   gap: 18px;
   margin-top: 22px;
@@ -1090,20 +1092,28 @@ textarea:focus {
 
 .notes-form,
 .checklist-form,
-.inline-note-edit-form {
+.document-form,
+.budget-form,
+.inline-note-edit-form,
+.inline-budget-edit-form {
   display: grid;
   gap: 12px;
 }
 
 .notes-form label,
 .checklist-form label,
-.inline-note-edit-form label {
+.document-form label,
+.budget-form label,
+.inline-note-edit-form label,
+.inline-budget-edit-form label {
   color: #243241;
   font-weight: 800;
 }
 
 .notes-list,
-.checklist-list {
+.checklist-list,
+.documents-list,
+.budget-items-list {
   display: grid;
   gap: 12px;
 }
@@ -1190,6 +1200,82 @@ textarea:focus {
 .checklist-item.completed span {
   color: #5b6876;
   text-decoration: line-through;
+}
+
+.metadata-form-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.metadata-form-grid label {
+  display: grid;
+  gap: 8px;
+}
+
+.document-item,
+.budget-item {
+  display: grid;
+  align-items: center;
+  gap: 16px;
+  border-radius: 8px;
+  background: #f5faf8;
+  padding: 14px;
+}
+
+.document-item {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.document-item div,
+.budget-item div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.document-item strong,
+.budget-item strong {
+  color: #172332;
+}
+
+.document-item span,
+.budget-item span {
+  color: #5b6876;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.document-item a {
+  overflow-wrap: anywhere;
+  color: #0f6f67;
+  font-weight: 700;
+}
+
+.budget-total {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+
+.budget-total span {
+  color: #5b6876;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.budget-total strong {
+  color: #0f6f67;
+  font-size: 1.2rem;
+}
+
+.budget-item {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.inline-budget-edit-form {
+  grid-column: 1 / -1;
 }
 
 .site-footer {
@@ -1338,13 +1424,25 @@ textarea:focus {
   }
 
   .note-item-footer,
-  .checklist-item {
+  .checklist-item,
+  .document-item,
+  .budget-item {
     align-items: flex-start;
     flex-direction: column;
   }
 
-  .checklist-input-row {
+  .checklist-input-row,
+  .metadata-form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .document-item,
+  .budget-item {
+    grid-template-columns: 1fr;
+  }
+
+  .budget-total {
+    justify-items: start;
   }
 
   .saved-toolbar,

@@ -6,14 +6,21 @@ import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { SectionTitle } from "../components/SectionTitle";
 import {
+  useAddTripBudgetItemMutation,
   useAddTripChecklistItemMutation,
+  useAddTripDocumentMutation,
   useAddTripNoteMutation,
+  useDeleteTripBudgetItemMutation,
   useDeleteTripChecklistItemMutation,
+  useDeleteTripDocumentMutation,
   useDeleteTripNoteMutation,
+  useGetTripBudgetItemsQuery,
   useGetTripChecklistQuery,
+  useGetTripDocumentsQuery,
   useGetTripNotesQuery,
   useGetSavedTripQuery,
   useToggleTripChecklistItemMutation,
+  useUpdateTripBudgetItemMutation,
   useUpdateTripNoteMutation,
 } from "../features/trips/tripsApi";
 
@@ -44,6 +51,24 @@ function formatDate(value: string) {
   }).format(date);
 }
 
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("en", {
+    currency: "USD",
+    maximumFractionDigits: 2,
+    style: "currency",
+  }).format(value);
+}
+
+function parseAmount(value: string) {
+  const parsedValue = Number(value);
+
+  if (!Number.isFinite(parsedValue)) {
+    return null;
+  }
+
+  return parsedValue;
+}
+
 function TripDetailsSkeleton() {
   return (
     <div className="trip-details-card" aria-label="Loading trip details">
@@ -70,6 +95,29 @@ export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
   const [deletingChecklistItemId, setDeletingChecklistItemId] = useState<
     number | null
   >(null);
+  const [documentName, setDocumentName] = useState("");
+  const [documentType, setDocumentType] = useState("");
+  const [documentUrl, setDocumentUrl] = useState("");
+  const [documentError, setDocumentError] = useState("");
+  const [deletingDocumentId, setDeletingDocumentId] = useState<number | null>(
+    null
+  );
+  const [budgetTitle, setBudgetTitle] = useState("");
+  const [budgetCategory, setBudgetCategory] = useState("");
+  const [budgetAmount, setBudgetAmount] = useState("");
+  const [editingBudgetItemId, setEditingBudgetItemId] = useState<number | null>(
+    null
+  );
+  const [editBudgetTitle, setEditBudgetTitle] = useState("");
+  const [editBudgetCategory, setEditBudgetCategory] = useState("");
+  const [editBudgetAmount, setEditBudgetAmount] = useState("");
+  const [budgetError, setBudgetError] = useState("");
+  const [updatingBudgetItemId, setUpdatingBudgetItemId] = useState<
+    number | null
+  >(null);
+  const [deletingBudgetItemId, setDeletingBudgetItemId] = useState<
+    number | null
+  >(null);
   const { data: trip, isError, isLoading } = useGetSavedTripQuery(
     tripId ?? skipToken
   );
@@ -83,6 +131,16 @@ export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
     isError: isChecklistError,
     isLoading: isChecklistLoading,
   } = useGetTripChecklistQuery(tripId ?? skipToken);
+  const {
+    data: documents = [],
+    isError: isDocumentsError,
+    isLoading: isDocumentsLoading,
+  } = useGetTripDocumentsQuery(tripId ?? skipToken);
+  const {
+    data: budgetItems = [],
+    isError: isBudgetItemsError,
+    isLoading: isBudgetItemsLoading,
+  } = useGetTripBudgetItemsQuery(tripId ?? skipToken);
   const [addTripNote, { isLoading: isSavingNote }] = useAddTripNoteMutation();
   const [updateTripNote, { isLoading: isUpdatingNote }] =
     useUpdateTripNoteMutation();
@@ -94,6 +152,21 @@ export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
     useToggleTripChecklistItemMutation();
   const [deleteTripChecklistItem, { isLoading: isDeletingChecklistItem }] =
     useDeleteTripChecklistItemMutation();
+  const [addTripDocument, { isLoading: isAddingDocument }] =
+    useAddTripDocumentMutation();
+  const [deleteTripDocument, { isLoading: isDeletingDocument }] =
+    useDeleteTripDocumentMutation();
+  const [addTripBudgetItem, { isLoading: isAddingBudgetItem }] =
+    useAddTripBudgetItemMutation();
+  const [updateTripBudgetItem, { isLoading: isUpdatingBudgetItem }] =
+    useUpdateTripBudgetItemMutation();
+  const [deleteTripBudgetItem, { isLoading: isDeletingBudgetItem }] =
+    useDeleteTripBudgetItemMutation();
+
+  const budgetItemsTotal = budgetItems.reduce(
+    (total, item) => total + Number(item.amount || 0),
+    0
+  );
 
   async function handleNoteSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -218,6 +291,148 @@ export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
       setChecklistError("Could not delete this checklist item.");
     } finally {
       setDeletingChecklistItemId(null);
+    }
+  }
+
+  async function handleDocumentSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!tripId || !documentName.trim() || !documentType.trim() || !documentUrl.trim()) {
+      return;
+    }
+
+    setDocumentError("");
+
+    try {
+      await addTripDocument({
+        tripId,
+        document: {
+          name: documentName.trim(),
+          type: documentType.trim(),
+          url: documentUrl.trim(),
+        },
+      }).unwrap();
+      setDocumentName("");
+      setDocumentType("");
+      setDocumentUrl("");
+    } catch {
+      setDocumentError("Could not save this document. Please try again.");
+    }
+  }
+
+  async function handleDeleteDocument(documentId: number) {
+    if (!tripId || !window.confirm("Delete this document?")) {
+      return;
+    }
+
+    setDocumentError("");
+    setDeletingDocumentId(documentId);
+
+    try {
+      await deleteTripDocument({ tripId, documentId }).unwrap();
+    } catch {
+      setDocumentError("Could not delete this document.");
+    } finally {
+      setDeletingDocumentId(null);
+    }
+  }
+
+  async function handleBudgetSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const parsedAmount = parseAmount(budgetAmount);
+    if (!tripId || !budgetTitle.trim() || !budgetCategory.trim() || parsedAmount === null) {
+      return;
+    }
+
+    setBudgetError("");
+
+    try {
+      await addTripBudgetItem({
+        tripId,
+        item: {
+          amount: parsedAmount,
+          category: budgetCategory.trim(),
+          title: budgetTitle.trim(),
+        },
+      }).unwrap();
+      setBudgetTitle("");
+      setBudgetCategory("");
+      setBudgetAmount("");
+    } catch {
+      setBudgetError("Could not save this budget item. Please try again.");
+    }
+  }
+
+  function startEditBudgetItem(
+    itemId: number,
+    title: string,
+    category: string,
+    amount: number
+  ) {
+    setEditingBudgetItemId(itemId);
+    setEditBudgetTitle(title);
+    setEditBudgetCategory(category);
+    setEditBudgetAmount(String(amount));
+    setBudgetError("");
+  }
+
+  function cancelEditBudgetItem() {
+    setEditingBudgetItemId(null);
+    setEditBudgetTitle("");
+    setEditBudgetCategory("");
+    setEditBudgetAmount("");
+  }
+
+  async function handleUpdateBudgetItem(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const parsedAmount = parseAmount(editBudgetAmount);
+    if (
+      !tripId ||
+      !editingBudgetItemId ||
+      !editBudgetTitle.trim() ||
+      !editBudgetCategory.trim() ||
+      parsedAmount === null
+    ) {
+      return;
+    }
+
+    setBudgetError("");
+    setUpdatingBudgetItemId(editingBudgetItemId);
+
+    try {
+      await updateTripBudgetItem({
+        tripId,
+        itemId: editingBudgetItemId,
+        item: {
+          amount: parsedAmount,
+          category: editBudgetCategory.trim(),
+          title: editBudgetTitle.trim(),
+        },
+      }).unwrap();
+      cancelEditBudgetItem();
+    } catch {
+      setBudgetError("Could not update this budget item.");
+    } finally {
+      setUpdatingBudgetItemId(null);
+    }
+  }
+
+  async function handleDeleteBudgetItem(itemId: number) {
+    if (!tripId || !window.confirm("Delete this budget item?")) {
+      return;
+    }
+
+    setBudgetError("");
+    setDeletingBudgetItemId(itemId);
+
+    try {
+      await deleteTripBudgetItem({ tripId, itemId }).unwrap();
+    } catch {
+      setBudgetError("Could not delete this budget item.");
+    } finally {
+      setDeletingBudgetItemId(null);
     }
   }
 
@@ -540,6 +755,339 @@ export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
                             ? "Deleting..."
                             : "Delete"}
                         </button>
+                      </article>
+                    ))
+                  )}
+                </div>
+              )}
+            </section>
+
+            <section
+              className="trip-documents-card"
+              aria-labelledby="trip-documents"
+            >
+              <div className="notes-header">
+                <div>
+                  <p className="eyebrow">Documents</p>
+                  <h3 id="trip-documents">Trip documents</h3>
+                </div>
+              </div>
+
+              <form className="document-form" onSubmit={handleDocumentSubmit}>
+                <div className="metadata-form-grid">
+                  <label htmlFor="trip-document-name">
+                    Name
+                    <input
+                      id="trip-document-name"
+                      onChange={(event) => setDocumentName(event.target.value)}
+                      placeholder="Passport scan"
+                      type="text"
+                      value={documentName}
+                    />
+                  </label>
+                  <label htmlFor="trip-document-type">
+                    Type
+                    <input
+                      id="trip-document-type"
+                      onChange={(event) => setDocumentType(event.target.value)}
+                      placeholder="Passport"
+                      type="text"
+                      value={documentType}
+                    />
+                  </label>
+                  <label htmlFor="trip-document-url">
+                    URL
+                    <input
+                      id="trip-document-url"
+                      onChange={(event) => setDocumentUrl(event.target.value)}
+                      placeholder="https://example.com/document"
+                      type="url"
+                      value={documentUrl}
+                    />
+                  </label>
+                </div>
+                <div className="form-actions">
+                  <button
+                    className="primary-button"
+                    disabled={
+                      isAddingDocument ||
+                      !documentName.trim() ||
+                      !documentType.trim() ||
+                      !documentUrl.trim()
+                    }
+                    type="submit"
+                  >
+                    {isAddingDocument ? "Adding..." : "Add Document"}
+                  </button>
+                </div>
+              </form>
+
+              {documentError && (
+                <p className="preferences-message error-text">
+                  {documentError}
+                </p>
+              )}
+
+              {isDocumentsLoading && (
+                <div
+                  className="documents-list"
+                  aria-label="Loading trip documents"
+                >
+                  <div className="skeleton-card note-skeleton" />
+                </div>
+              )}
+
+              {!isDocumentsLoading && isDocumentsError && (
+                <p className="preferences-message error-text">
+                  Could not load documents.
+                </p>
+              )}
+
+              {!isDocumentsLoading && !isDocumentsError && (
+                <div className="documents-list">
+                  {documents.length === 0 ? (
+                    <p className="notes-empty">No documents saved yet.</p>
+                  ) : (
+                    documents.map((document) => (
+                      <article className="document-item" key={document.id}>
+                        <div>
+                          <strong>{document.name}</strong>
+                          <span>{document.type}</span>
+                          <a
+                            href={document.url}
+                            rel="noreferrer"
+                            target="_blank"
+                          >
+                            {document.url}
+                          </a>
+                        </div>
+                        <button
+                          className="secondary-button compact-button note-delete-button"
+                          disabled={isDeletingDocument}
+                          onClick={() =>
+                            void handleDeleteDocument(document.id)
+                          }
+                          type="button"
+                        >
+                          {isDeletingDocument &&
+                          deletingDocumentId === document.id
+                            ? "Deleting..."
+                            : "Delete"}
+                        </button>
+                      </article>
+                    ))
+                  )}
+                </div>
+              )}
+            </section>
+
+            <section
+              className="trip-budget-card"
+              aria-labelledby="trip-budget-items"
+            >
+              <div className="notes-header">
+                <div>
+                  <p className="eyebrow">Budget</p>
+                  <h3 id="trip-budget-items">Budget items</h3>
+                </div>
+                <div className="budget-total">
+                  <span>Total</span>
+                  <strong>{formatCurrency(budgetItemsTotal)}</strong>
+                </div>
+              </div>
+
+              <form className="budget-form" onSubmit={handleBudgetSubmit}>
+                <div className="metadata-form-grid">
+                  <label htmlFor="trip-budget-title">
+                    Title
+                    <input
+                      id="trip-budget-title"
+                      onChange={(event) => setBudgetTitle(event.target.value)}
+                      placeholder="Flight"
+                      type="text"
+                      value={budgetTitle}
+                    />
+                  </label>
+                  <label htmlFor="trip-budget-category">
+                    Category
+                    <input
+                      id="trip-budget-category"
+                      onChange={(event) =>
+                        setBudgetCategory(event.target.value)
+                      }
+                      placeholder="Transport"
+                      type="text"
+                      value={budgetCategory}
+                    />
+                  </label>
+                  <label htmlFor="trip-budget-amount">
+                    Amount
+                    <input
+                      id="trip-budget-amount"
+                      min="0"
+                      onChange={(event) => setBudgetAmount(event.target.value)}
+                      placeholder="850"
+                      step="0.01"
+                      type="number"
+                      value={budgetAmount}
+                    />
+                  </label>
+                </div>
+                <div className="form-actions">
+                  <button
+                    className="primary-button"
+                    disabled={
+                      isAddingBudgetItem ||
+                      !budgetTitle.trim() ||
+                      !budgetCategory.trim() ||
+                      !budgetAmount.trim()
+                    }
+                    type="submit"
+                  >
+                    {isAddingBudgetItem ? "Adding..." : "Add Budget Item"}
+                  </button>
+                </div>
+              </form>
+
+              {budgetError && (
+                <p className="preferences-message error-text">{budgetError}</p>
+              )}
+
+              {isBudgetItemsLoading && (
+                <div
+                  className="budget-items-list"
+                  aria-label="Loading trip budget items"
+                >
+                  <div className="skeleton-card note-skeleton" />
+                </div>
+              )}
+
+              {!isBudgetItemsLoading && isBudgetItemsError && (
+                <p className="preferences-message error-text">
+                  Could not load budget items.
+                </p>
+              )}
+
+              {!isBudgetItemsLoading && !isBudgetItemsError && (
+                <div className="budget-items-list">
+                  {budgetItems.length === 0 ? (
+                    <p className="notes-empty">No budget items yet.</p>
+                  ) : (
+                    budgetItems.map((item) => (
+                      <article className="budget-item" key={item.id}>
+                        {editingBudgetItemId === item.id ? (
+                          <form
+                            className="inline-budget-edit-form"
+                            onSubmit={handleUpdateBudgetItem}
+                          >
+                            <div className="metadata-form-grid">
+                              <label htmlFor={`budget-title-${item.id}`}>
+                                Title
+                                <input
+                                  id={`budget-title-${item.id}`}
+                                  onChange={(event) =>
+                                    setEditBudgetTitle(event.target.value)
+                                  }
+                                  type="text"
+                                  value={editBudgetTitle}
+                                />
+                              </label>
+                              <label htmlFor={`budget-category-${item.id}`}>
+                                Category
+                                <input
+                                  id={`budget-category-${item.id}`}
+                                  onChange={(event) =>
+                                    setEditBudgetCategory(event.target.value)
+                                  }
+                                  type="text"
+                                  value={editBudgetCategory}
+                                />
+                              </label>
+                              <label htmlFor={`budget-amount-${item.id}`}>
+                                Amount
+                                <input
+                                  id={`budget-amount-${item.id}`}
+                                  min="0"
+                                  onChange={(event) =>
+                                    setEditBudgetAmount(event.target.value)
+                                  }
+                                  step="0.01"
+                                  type="number"
+                                  value={editBudgetAmount}
+                                />
+                              </label>
+                            </div>
+                            <div className="note-actions">
+                              <button
+                                className="primary-button compact-button"
+                                disabled={
+                                  isUpdatingBudgetItem ||
+                                  !editBudgetTitle.trim() ||
+                                  !editBudgetCategory.trim() ||
+                                  !editBudgetAmount.trim()
+                                }
+                                type="submit"
+                              >
+                                {isUpdatingBudgetItem &&
+                                updatingBudgetItemId === item.id
+                                  ? "Saving..."
+                                  : "Save"}
+                              </button>
+                              <button
+                                className="secondary-button compact-button"
+                                disabled={isUpdatingBudgetItem}
+                                onClick={cancelEditBudgetItem}
+                                type="button"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </form>
+                        ) : (
+                          <>
+                            <div>
+                              <strong>{item.title}</strong>
+                              <span>{item.category}</span>
+                            </div>
+                            <strong>{formatCurrency(Number(item.amount || 0))}</strong>
+                            <div className="note-actions">
+                              <button
+                                className="secondary-button compact-button"
+                                disabled={
+                                  isDeletingBudgetItem ||
+                                  isUpdatingBudgetItem
+                                }
+                                onClick={() =>
+                                  startEditBudgetItem(
+                                    item.id,
+                                    item.title,
+                                    item.category,
+                                    Number(item.amount || 0)
+                                  )
+                                }
+                                type="button"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                className="secondary-button compact-button note-delete-button"
+                                disabled={
+                                  isDeletingBudgetItem ||
+                                  isUpdatingBudgetItem
+                                }
+                                onClick={() =>
+                                  void handleDeleteBudgetItem(item.id)
+                                }
+                                type="button"
+                              >
+                                {isDeletingBudgetItem &&
+                                deletingBudgetItemId === item.id
+                                  ? "Deleting..."
+                                  : "Delete"}
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </article>
                     ))
                   )}

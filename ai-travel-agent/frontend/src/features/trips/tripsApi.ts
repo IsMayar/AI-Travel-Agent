@@ -79,6 +79,37 @@ export interface TripChecklistItem {
   createdAt: string;
 }
 
+export interface TripDocumentRequest {
+  name: string;
+  type: string;
+  url: string;
+}
+
+export interface TripDocument {
+  id: number;
+  tripId: number;
+  name: string;
+  type: string;
+  url: string;
+  createdAt: string;
+}
+
+export interface TripBudgetItemRequest {
+  title: string;
+  category: string;
+  amount: number;
+}
+
+export interface TripBudgetItem {
+  id: number;
+  tripId: number;
+  title: string;
+  category: string;
+  amount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TripStatsResponse {
   totalTrips: number;
   favoriteTrips: number;
@@ -244,6 +275,81 @@ export const tripsApi = api.injectEndpoints({
         { type: "TripChecklist", id: tripId },
       ],
     }),
+    getTripDocuments: builder.query<TripDocument[], number>({
+      query: (tripId) => `/api/trips/${tripId}/documents`,
+      providesTags: (_result, _error, tripId) => [
+        { type: "TripDocuments", id: tripId },
+      ],
+    }),
+    addTripDocument: builder.mutation<
+      TripDocument,
+      { tripId: number; document: TripDocumentRequest }
+    >({
+      query: ({ tripId, document }) => ({
+        url: `/api/trips/${tripId}/documents`,
+        method: "POST",
+        body: document,
+      }),
+      invalidatesTags: (_result, _error, { tripId }) => [
+        { type: "TripDocuments", id: tripId },
+      ],
+    }),
+    deleteTripDocument: builder.mutation<
+      void,
+      { tripId: number; documentId: number }
+    >({
+      query: ({ tripId, documentId }) => ({
+        url: `/api/trips/${tripId}/documents/${documentId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (_result, _error, { tripId }) => [
+        { type: "TripDocuments", id: tripId },
+      ],
+    }),
+    getTripBudgetItems: builder.query<TripBudgetItem[], number>({
+      query: (tripId) => `/api/trips/${tripId}/budget-items`,
+      providesTags: (_result, _error, tripId) => [
+        { type: "TripBudgetItems", id: tripId },
+      ],
+    }),
+    addTripBudgetItem: builder.mutation<
+      TripBudgetItem,
+      { tripId: number; item: TripBudgetItemRequest }
+    >({
+      query: ({ tripId, item }) => ({
+        url: `/api/trips/${tripId}/budget-items`,
+        method: "POST",
+        body: item,
+      }),
+      invalidatesTags: (_result, _error, { tripId }) => [
+        { type: "TripBudgetItems", id: tripId },
+      ],
+    }),
+    updateTripBudgetItem: builder.mutation<
+      TripBudgetItem,
+      { tripId: number; itemId: number; item: TripBudgetItemRequest }
+    >({
+      query: ({ tripId, itemId, item }) => ({
+        url: `/api/trips/${tripId}/budget-items/${itemId}`,
+        method: "PUT",
+        body: item,
+      }),
+      invalidatesTags: (_result, _error, { tripId }) => [
+        { type: "TripBudgetItems", id: tripId },
+      ],
+    }),
+    deleteTripBudgetItem: builder.mutation<
+      void,
+      { tripId: number; itemId: number }
+    >({
+      query: ({ tripId, itemId }) => ({
+        url: `/api/trips/${tripId}/budget-items/${itemId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (_result, _error, { tripId }) => [
+        { type: "TripBudgetItems", id: tripId },
+      ],
+    }),
     getSavedTrips: builder.query<SavedTrip[], { favorite?: boolean } | void>({
       query: (args) => ({
         url: "/api/trips",
@@ -311,13 +417,19 @@ export const tripsApi = api.injectEndpoints({
 });
 
 export const {
+  useAddTripBudgetItemMutation,
+  useAddTripDocumentMutation,
   useAddTripNoteMutation,
   useAddTripChecklistItemMutation,
+  useDeleteTripBudgetItemMutation,
   useDeleteTripChecklistItemMutation,
+  useDeleteTripDocumentMutation,
   useDeleteTripNoteMutation,
   useDeleteSavedTripMutation,
   useDuplicateSavedTripMutation,
+  useGetTripBudgetItemsQuery,
   useGetTripChecklistQuery,
+  useGetTripDocumentsQuery,
   useGetRecentTripsQuery,
   useGetSavedTripQuery,
   useGetSavedTripsQuery,
@@ -329,6 +441,7 @@ export const {
   useSaveTripMutation,
   useToggleTripChecklistItemMutation,
   useToggleFavoriteTripMutation,
+  useUpdateTripBudgetItemMutation,
   useUpdateTripNoteMutation,
   useUpdateSavedTripMutation,
 } = tripsApi;
