@@ -13,10 +13,12 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@WithMockUser
 class PreferencesControllerTest {
 
     @Autowired
@@ -28,6 +30,7 @@ class PreferencesControllerTest {
     @BeforeEach
     void cleanDatabase() {
         jdbcTemplate.update("DELETE FROM travel_preferences");
+        jdbcTemplate.update("DELETE FROM app_users");
     }
 
     @Test

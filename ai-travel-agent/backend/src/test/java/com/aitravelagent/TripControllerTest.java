@@ -24,6 +24,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -31,6 +32,7 @@ import com.jayway.jsonpath.JsonPath;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@WithMockUser
 class TripControllerTest {
 
     @Autowired
@@ -49,6 +51,7 @@ class TripControllerTest {
         jdbcTemplate.update("DELETE FROM trip_notes");
         jdbcTemplate.update("DELETE FROM travel_preferences");
         jdbcTemplate.update("DELETE FROM saved_trips");
+        jdbcTemplate.update("DELETE FROM app_users");
     }
 
     @Test
@@ -135,10 +138,10 @@ class TripControllerTest {
         mockMvc.perform(options("/api/trips/plan")
                         .header(HttpHeaders.ORIGIN, "http://localhost:5175")
                         .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, HttpMethod.POST.name())
-                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "content-type"))
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "authorization,content-type"))
                 .andExpect(status().isOk())
                 .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:5175"))
-                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, "content-type"))
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, "authorization, content-type"))
                 .andExpect(header().string(
                         HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS,
                         "GET,POST,PUT,PATCH,DELETE,OPTIONS"

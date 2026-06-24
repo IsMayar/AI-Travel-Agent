@@ -6,6 +6,7 @@ The app uses:
 - React + TypeScript + Vite frontend
 - Spring Boot Java backend
 - PostgreSQL for saved trip plans
+- Spring Security + JWT authentication
 - Mock trip-planning data only
 
 OpenAI, real travel APIs, authentication, payments, and booking are not added yet.
@@ -31,9 +32,13 @@ Set database connection values before starting the backend:
 $env:DATABASE_URL="jdbc:postgresql://localhost:5432/ai_travel_agent"
 $env:POSTGRES_USER="postgres"
 $env:POSTGRES_PASSWORD="postgres"
+$env:JWT_SECRET="replace_with_a_long_random_secret_for_local_dev"
+$env:JWT_EXPIRATION_SECONDS="86400"
 ```
 
 If your PostgreSQL user, password, host, or database name is different, update those values for your machine.
+
+`JWT_SECRET` signs local JWTs. Use a long random value for real local development and never commit real secrets.
 
 ## Backend Startup
 
@@ -84,6 +89,12 @@ npm run build
 
 ## Available Endpoints
 
+All endpoints are protected by JWT authentication except:
+
+- `GET /api/health`
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+
 ### Health
 
 ```http
@@ -98,6 +109,73 @@ Returns:
   "app": "ai-travel-agent"
 }
 ```
+
+### Authentication
+
+```http
+POST /api/auth/register
+```
+
+Request:
+
+```json
+{
+  "fullName": "Faisal Mayar",
+  "email": "test@example.com",
+  "password": "Password@123"
+}
+```
+
+Returns:
+
+```json
+{
+  "token": "jwt-token-here",
+  "user": {
+    "id": 1,
+    "fullName": "Faisal Mayar",
+    "email": "test@example.com"
+  }
+}
+```
+
+```http
+POST /api/auth/login
+```
+
+Request:
+
+```json
+{
+  "email": "test@example.com",
+  "password": "Password@123"
+}
+```
+
+Returns the same token and user response shape as registration.
+
+```http
+GET /api/auth/me
+```
+
+Requires:
+
+```http
+Authorization: Bearer jwt-token-here
+```
+
+Returns the authenticated user profile.
+
+Passwords are hashed with BCrypt before storage. Plain text passwords are not stored.
+
+Frontend test credentials shown in the forms:
+
+```text
+Email: test@example.com
+Password: Password@123
+```
+
+Register the account first, then sign in with those credentials.
 
 ### Plan Trip
 
@@ -461,7 +539,7 @@ ai-travel-agent/
       dto/             Request and response DTOs
       entity/          JPA entities
       repository/      Spring Data repositories
-      service/         Mock trip planning and saved trip services
+      service/         Auth, JWT, mock trip planning, and saved trip services
     src/main/resources/
       application.properties
     src/test/
@@ -472,8 +550,8 @@ ai-travel-agent/
       app/             Redux store and typed hooks
       components/      Reusable UI components
       data/            Demo fallback data
-      features/        RTK Query trip API
-      pages/           Landing, planner, saved trips, dashboard, trip details, preferences, and 404 pages
+      features/        Auth state and RTK Query APIs
+      pages/           Auth, landing, planner, saved trips, dashboard, trip details, preferences, and 404 pages
       services/        Base RTK Query API config
 ```
 
