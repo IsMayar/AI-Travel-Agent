@@ -1,4 +1,5 @@
 import { Layout } from "./components/Layout";
+import { DashboardPage } from "./pages/DashboardPage";
 import { LandingPage } from "./pages/LandingPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { PreferencesPage } from "./pages/PreferencesPage";
@@ -27,6 +28,10 @@ function renderPage() {
 
   if (path === "/saved-trips") {
     return <SavedTripsPage />;
+  }
+
+  if (path === "/dashboard") {
+    return <DashboardPage />;
   }
 
   if (path === "/preferences") {

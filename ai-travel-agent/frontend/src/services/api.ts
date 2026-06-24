@@ -6,12 +6,15 @@ export const api = createApi({
     baseUrl: "http://localhost:8080",
   }),
   tagTypes: [
+    "Dashboard",
     "Preferences",
     "SavedTrips",
     "TripBudgetItems",
     "TripChecklist",
     "TripDocuments",
+    "TripItinerary",
     "TripNotes",
+    "TripTags",
   ],
   endpoints: () => ({}),
 });

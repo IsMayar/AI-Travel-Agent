@@ -110,6 +110,39 @@ export interface TripBudgetItem {
   updatedAt: string;
 }
 
+export interface TripItineraryItemRequest {
+  dayNumber: number;
+  title: string;
+  description: string;
+  location: string;
+  startTime: string;
+  endTime: string;
+}
+
+export interface TripItineraryItem {
+  id: number;
+  tripId: number;
+  dayNumber: number;
+  title: string;
+  description: string;
+  location: string;
+  startTime: string;
+  endTime: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TripTagRequest {
+  name: string;
+}
+
+export interface TripTag {
+  id: number;
+  tripId: number;
+  name: string;
+  createdAt: string;
+}
+
 export interface TripStatsResponse {
   totalTrips: number;
   favoriteTrips: number;
@@ -128,6 +161,19 @@ export interface TripRecommendation {
 
 export interface TripRecommendationsResponse {
   recommendations: TripRecommendation[];
+}
+
+export interface DashboardSummaryResponse {
+  totalTrips: number;
+  favoriteTrips: number;
+  totalNotes: number;
+  totalChecklistItems: number;
+  completedChecklistItems: number;
+  totalDocuments: number;
+  totalBudgetAmount: number;
+  totalItineraryItems: number;
+  totalTags: number;
+  recentTrips: SavedTrip[];
 }
 
 export const tripsApi = api.injectEndpoints({
@@ -198,6 +244,7 @@ export const tripsApi = api.injectEndpoints({
         body: note,
       }),
       invalidatesTags: (_result, _error, { tripId }) => [
+        "Dashboard",
         { type: "TripNotes", id: tripId },
       ],
     }),
@@ -217,6 +264,7 @@ export const tripsApi = api.injectEndpoints({
         body: note,
       }),
       invalidatesTags: (_result, _error, { tripId }) => [
+        "Dashboard",
         { type: "TripNotes", id: tripId },
       ],
     }),
@@ -229,6 +277,7 @@ export const tripsApi = api.injectEndpoints({
         method: "DELETE",
       }),
       invalidatesTags: (_result, _error, { tripId }) => [
+        "Dashboard",
         { type: "TripNotes", id: tripId },
       ],
     }),
@@ -248,6 +297,7 @@ export const tripsApi = api.injectEndpoints({
         body: item,
       }),
       invalidatesTags: (_result, _error, { tripId }) => [
+        "Dashboard",
         { type: "TripChecklist", id: tripId },
       ],
     }),
@@ -260,6 +310,7 @@ export const tripsApi = api.injectEndpoints({
         method: "PATCH",
       }),
       invalidatesTags: (_result, _error, { tripId }) => [
+        "Dashboard",
         { type: "TripChecklist", id: tripId },
       ],
     }),
@@ -272,6 +323,7 @@ export const tripsApi = api.injectEndpoints({
         method: "DELETE",
       }),
       invalidatesTags: (_result, _error, { tripId }) => [
+        "Dashboard",
         { type: "TripChecklist", id: tripId },
       ],
     }),
@@ -291,6 +343,7 @@ export const tripsApi = api.injectEndpoints({
         body: document,
       }),
       invalidatesTags: (_result, _error, { tripId }) => [
+        "Dashboard",
         { type: "TripDocuments", id: tripId },
       ],
     }),
@@ -303,6 +356,7 @@ export const tripsApi = api.injectEndpoints({
         method: "DELETE",
       }),
       invalidatesTags: (_result, _error, { tripId }) => [
+        "Dashboard",
         { type: "TripDocuments", id: tripId },
       ],
     }),
@@ -322,6 +376,7 @@ export const tripsApi = api.injectEndpoints({
         body: item,
       }),
       invalidatesTags: (_result, _error, { tripId }) => [
+        "Dashboard",
         { type: "TripBudgetItems", id: tripId },
       ],
     }),
@@ -335,6 +390,7 @@ export const tripsApi = api.injectEndpoints({
         body: item,
       }),
       invalidatesTags: (_result, _error, { tripId }) => [
+        "Dashboard",
         { type: "TripBudgetItems", id: tripId },
       ],
     }),
@@ -347,8 +403,96 @@ export const tripsApi = api.injectEndpoints({
         method: "DELETE",
       }),
       invalidatesTags: (_result, _error, { tripId }) => [
+        "Dashboard",
         { type: "TripBudgetItems", id: tripId },
       ],
+    }),
+    getTripItinerary: builder.query<TripItineraryItem[], number>({
+      query: (tripId) => `/api/trips/${tripId}/itinerary`,
+      providesTags: (_result, _error, tripId) => [
+        { type: "TripItinerary", id: tripId },
+      ],
+    }),
+    addTripItineraryItem: builder.mutation<
+      TripItineraryItem,
+      { tripId: number; item: TripItineraryItemRequest }
+    >({
+      query: ({ tripId, item }) => ({
+        url: `/api/trips/${tripId}/itinerary`,
+        method: "POST",
+        body: item,
+      }),
+      invalidatesTags: (_result, _error, { tripId }) => [
+        "Dashboard",
+        { type: "TripItinerary", id: tripId },
+      ],
+    }),
+    updateTripItineraryItem: builder.mutation<
+      TripItineraryItem,
+      { tripId: number; itemId: number; item: TripItineraryItemRequest }
+    >({
+      query: ({ tripId, itemId, item }) => ({
+        url: `/api/trips/${tripId}/itinerary/${itemId}`,
+        method: "PUT",
+        body: item,
+      }),
+      invalidatesTags: (_result, _error, { tripId }) => [
+        "Dashboard",
+        { type: "TripItinerary", id: tripId },
+      ],
+    }),
+    deleteTripItineraryItem: builder.mutation<
+      void,
+      { tripId: number; itemId: number }
+    >({
+      query: ({ tripId, itemId }) => ({
+        url: `/api/trips/${tripId}/itinerary/${itemId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (_result, _error, { tripId }) => [
+        "Dashboard",
+        { type: "TripItinerary", id: tripId },
+      ],
+    }),
+    getTripTags: builder.query<TripTag[], number>({
+      query: (tripId) => `/api/trips/${tripId}/tags`,
+      providesTags: (_result, _error, tripId) => [
+        { type: "TripTags", id: tripId },
+      ],
+    }),
+    addTripTag: builder.mutation<
+      TripTag,
+      { tripId: number; tag: TripTagRequest }
+    >({
+      query: ({ tripId, tag }) => ({
+        url: `/api/trips/${tripId}/tags`,
+        method: "POST",
+        body: tag,
+      }),
+      invalidatesTags: (_result, _error, { tripId }) => [
+        "Dashboard",
+        { type: "TripTags", id: tripId },
+      ],
+    }),
+    deleteTripTag: builder.mutation<void, { tripId: number; tagId: number }>({
+      query: ({ tripId, tagId }) => ({
+        url: `/api/trips/${tripId}/tags/${tagId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (_result, _error, { tripId }) => [
+        "Dashboard",
+        { type: "TripTags", id: tripId },
+      ],
+    }),
+    exportTrip: builder.query<string, number>({
+      query: (tripId) => ({
+        url: `/api/trips/${tripId}/export`,
+        responseHandler: (response) => response.text(),
+      }),
+    }),
+    getDashboardSummary: builder.query<DashboardSummaryResponse, void>({
+      query: () => "/api/dashboard/summary",
+      providesTags: ["Dashboard", { type: "SavedTrips", id: "LIST" }],
     }),
     getSavedTrips: builder.query<SavedTrip[], { favorite?: boolean } | void>({
       query: (args) => ({
@@ -417,24 +561,33 @@ export const tripsApi = api.injectEndpoints({
 });
 
 export const {
+  useAddTripItineraryItemMutation,
   useAddTripBudgetItemMutation,
   useAddTripDocumentMutation,
   useAddTripNoteMutation,
   useAddTripChecklistItemMutation,
+  useAddTripTagMutation,
   useDeleteTripBudgetItemMutation,
   useDeleteTripChecklistItemMutation,
   useDeleteTripDocumentMutation,
+  useDeleteTripItineraryItemMutation,
   useDeleteTripNoteMutation,
   useDeleteSavedTripMutation,
+  useDeleteTripTagMutation,
   useDuplicateSavedTripMutation,
+  useExportTripQuery,
+  useGetDashboardSummaryQuery,
+  useLazyExportTripQuery,
   useGetTripBudgetItemsQuery,
   useGetTripChecklistQuery,
   useGetTripDocumentsQuery,
+  useGetTripItineraryQuery,
   useGetRecentTripsQuery,
   useGetSavedTripQuery,
   useGetSavedTripsQuery,
   useGetTripRecommendationsQuery,
   useGetTripNotesQuery,
+  useGetTripTagsQuery,
   useGetTripStatsQuery,
   usePlanTripMutation,
   useSearchSavedTripsQuery,
@@ -442,6 +595,7 @@ export const {
   useToggleTripChecklistItemMutation,
   useToggleFavoriteTripMutation,
   useUpdateTripBudgetItemMutation,
+  useUpdateTripItineraryItemMutation,
   useUpdateTripNoteMutation,
   useUpdateSavedTripMutation,
 } = tripsApi;

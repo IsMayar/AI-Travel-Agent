@@ -823,7 +823,8 @@ textarea:focus {
   margin: 0;
 }
 
-.stats-grid {
+.stats-grid,
+.dashboard-summary-grid {
   display: grid;
   gap: 14px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1063,10 +1064,18 @@ textarea:focus {
   font-size: 1.02rem;
 }
 
+.trip-details-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
 .trip-notes-card,
 .trip-checklist-card,
 .trip-documents-card,
-.trip-budget-card {
+.trip-budget-card,
+.trip-itinerary-card,
+.trip-tags-card {
   display: grid;
   gap: 18px;
   margin-top: 22px;
@@ -1094,8 +1103,11 @@ textarea:focus {
 .checklist-form,
 .document-form,
 .budget-form,
+.itinerary-form,
+.tag-form,
 .inline-note-edit-form,
-.inline-budget-edit-form {
+.inline-budget-edit-form,
+.inline-itinerary-edit-form {
   display: grid;
   gap: 12px;
 }
@@ -1104,8 +1116,11 @@ textarea:focus {
 .checklist-form label,
 .document-form label,
 .budget-form label,
+.itinerary-form label,
+.tag-form label,
 .inline-note-edit-form label,
-.inline-budget-edit-form label {
+.inline-budget-edit-form label,
+.inline-itinerary-edit-form label {
   color: #243241;
   font-weight: 800;
 }
@@ -1113,7 +1128,9 @@ textarea:focus {
 .notes-list,
 .checklist-list,
 .documents-list,
-.budget-items-list {
+.budget-items-list,
+.itinerary-manager-list,
+.tag-chip-list {
   display: grid;
   gap: 12px;
 }
@@ -1213,6 +1230,14 @@ textarea:focus {
   gap: 8px;
 }
 
+.itinerary-form-grid {
+  grid-template-columns: 0.45fr 1fr 1fr 0.65fr 0.65fr;
+}
+
+.full-width-field {
+  grid-column: 1 / -1;
+}
+
 .document-item,
 .budget-item {
   display: grid;
@@ -1278,6 +1303,97 @@ textarea:focus {
   grid-column: 1 / -1;
 }
 
+.tag-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.tag-chip {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  background: #edf7f4;
+  color: #0f6f67;
+  font-weight: 800;
+  padding: 8px 10px 8px 12px;
+}
+
+.tag-chip button {
+  min-height: 28px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0f6f67;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 0 9px;
+}
+
+.tag-chip button:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+
+.itinerary-day-group {
+  display: grid;
+  gap: 10px;
+}
+
+.itinerary-day-group h4 {
+  margin: 0;
+  color: #172332;
+  font-size: 1rem;
+}
+
+.itinerary-manager-item {
+  display: grid;
+  align-items: start;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  border-radius: 8px;
+  background: #f5faf8;
+  padding: 14px;
+}
+
+.itinerary-manager-item > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.itinerary-manager-item strong {
+  color: #172332;
+}
+
+.itinerary-manager-item span,
+.itinerary-manager-item p {
+  color: #5b6876;
+}
+
+.itinerary-manager-item p {
+  margin: 0;
+}
+
+.itinerary-location {
+  border-radius: 999px;
+  background: #fff1e9;
+  color: #bf5a35;
+  font-size: 0.86rem;
+  font-weight: 800;
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+
+.inline-itinerary-edit-form {
+  grid-column: 1 / -1;
+}
+
+.dashboard-recent-section {
+  margin-top: 34px;
+}
+
 .site-footer {
   border-top: 1px solid rgba(30, 51, 61, 0.08);
   background: #172332;
@@ -1318,12 +1434,13 @@ textarea:focus {
 
   .feature-grid,
   .destination-grid,
-  .recommendation-grid,
-  .saved-trip-grid,
-  .stats-grid,
-  .results-layout,
-  .details-grid,
-  .skeleton-grid {
+    .recommendation-grid,
+    .saved-trip-grid,
+    .stats-grid,
+    .dashboard-summary-grid,
+    .results-layout,
+    .details-grid,
+    .skeleton-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1387,12 +1504,13 @@ textarea:focus {
 
   .feature-grid,
   .destination-grid,
-  .recommendation-grid,
-  .saved-trip-grid,
-  .stats-grid,
-  .results-layout,
-  .details-grid,
-  .skeleton-grid {
+    .recommendation-grid,
+    .saved-trip-grid,
+    .stats-grid,
+    .dashboard-summary-grid,
+    .results-layout,
+    .details-grid,
+    .skeleton-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1426,23 +1544,35 @@ textarea:focus {
   .note-item-footer,
   .checklist-item,
   .document-item,
-  .budget-item {
+  .budget-item,
+  .itinerary-manager-item {
     align-items: flex-start;
     flex-direction: column;
   }
 
   .checklist-input-row,
-  .metadata-form-grid {
+  .metadata-form-grid,
+  .itinerary-form-grid {
     grid-template-columns: 1fr;
   }
 
   .document-item,
-  .budget-item {
+  .budget-item,
+  .itinerary-manager-item {
     grid-template-columns: 1fr;
   }
 
   .budget-total {
     justify-items: start;
+  }
+
+  .trip-details-actions,
+  .form-actions {
+    justify-content: stretch;
+  }
+
+  .trip-details-actions .secondary-button {
+    width: 100%;
   }
 
   .saved-toolbar,

@@ -9,18 +9,26 @@ import {
   useAddTripBudgetItemMutation,
   useAddTripChecklistItemMutation,
   useAddTripDocumentMutation,
+  useAddTripItineraryItemMutation,
   useAddTripNoteMutation,
+  useAddTripTagMutation,
   useDeleteTripBudgetItemMutation,
   useDeleteTripChecklistItemMutation,
   useDeleteTripDocumentMutation,
+  useDeleteTripItineraryItemMutation,
   useDeleteTripNoteMutation,
+  useDeleteTripTagMutation,
   useGetTripBudgetItemsQuery,
   useGetTripChecklistQuery,
   useGetTripDocumentsQuery,
+  useGetTripItineraryQuery,
   useGetTripNotesQuery,
   useGetSavedTripQuery,
+  useGetTripTagsQuery,
+  useLazyExportTripQuery,
   useToggleTripChecklistItemMutation,
   useUpdateTripBudgetItemMutation,
+  useUpdateTripItineraryItemMutation,
   useUpdateTripNoteMutation,
 } from "../features/trips/tripsApi";
 
@@ -67,6 +75,10 @@ function parseAmount(value: string) {
   }
 
   return parsedValue;
+}
+
+function toTimeInput(value: string) {
+  return value.length >= 5 ? value.slice(0, 5) : value;
 }
 
 function TripDetailsSkeleton() {
@@ -118,6 +130,33 @@ export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
   const [deletingBudgetItemId, setDeletingBudgetItemId] = useState<
     number | null
   >(null);
+  const [itineraryDayNumber, setItineraryDayNumber] = useState("1");
+  const [itineraryTitle, setItineraryTitle] = useState("");
+  const [itineraryDescription, setItineraryDescription] = useState("");
+  const [itineraryLocation, setItineraryLocation] = useState("");
+  const [itineraryStartTime, setItineraryStartTime] = useState("09:00");
+  const [itineraryEndTime, setItineraryEndTime] = useState("10:00");
+  const [editingItineraryItemId, setEditingItineraryItemId] = useState<
+    number | null
+  >(null);
+  const [editItineraryDayNumber, setEditItineraryDayNumber] = useState("1");
+  const [editItineraryTitle, setEditItineraryTitle] = useState("");
+  const [editItineraryDescription, setEditItineraryDescription] = useState("");
+  const [editItineraryLocation, setEditItineraryLocation] = useState("");
+  const [editItineraryStartTime, setEditItineraryStartTime] =
+    useState("09:00");
+  const [editItineraryEndTime, setEditItineraryEndTime] = useState("10:00");
+  const [itineraryError, setItineraryError] = useState("");
+  const [updatingItineraryItemId, setUpdatingItineraryItemId] = useState<
+    number | null
+  >(null);
+  const [deletingItineraryItemId, setDeletingItineraryItemId] = useState<
+    number | null
+  >(null);
+  const [tagName, setTagName] = useState("");
+  const [tagError, setTagError] = useState("");
+  const [deletingTagId, setDeletingTagId] = useState<number | null>(null);
+  const [exportError, setExportError] = useState("");
   const { data: trip, isError, isLoading } = useGetSavedTripQuery(
     tripId ?? skipToken
   );
@@ -141,6 +180,16 @@ export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
     isError: isBudgetItemsError,
     isLoading: isBudgetItemsLoading,
   } = useGetTripBudgetItemsQuery(tripId ?? skipToken);
+  const {
+    data: itineraryItems = [],
+    isError: isItineraryError,
+    isLoading: isItineraryLoading,
+  } = useGetTripItineraryQuery(tripId ?? skipToken);
+  const {
+    data: tags = [],
+    isError: isTagsError,
+    isLoading: isTagsLoading,
+  } = useGetTripTagsQuery(tripId ?? skipToken);
   const [addTripNote, { isLoading: isSavingNote }] = useAddTripNoteMutation();
   const [updateTripNote, { isLoading: isUpdatingNote }] =
     useUpdateTripNoteMutation();
@@ -162,11 +211,33 @@ export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
     useUpdateTripBudgetItemMutation();
   const [deleteTripBudgetItem, { isLoading: isDeletingBudgetItem }] =
     useDeleteTripBudgetItemMutation();
+  const [addTripItineraryItem, { isLoading: isAddingItineraryItem }] =
+    useAddTripItineraryItemMutation();
+  const [updateTripItineraryItem, { isLoading: isUpdatingItineraryItem }] =
+    useUpdateTripItineraryItemMutation();
+  const [deleteTripItineraryItem, { isLoading: isDeletingItineraryItem }] =
+    useDeleteTripItineraryItemMutation();
+  const [addTripTag, { isLoading: isAddingTag }] = useAddTripTagMutation();
+  const [deleteTripTag, { isLoading: isDeletingTag }] =
+    useDeleteTripTagMutation();
+  const [triggerExportTrip, { isFetching: isExportingTrip }] =
+    useLazyExportTripQuery();
 
   const budgetItemsTotal = budgetItems.reduce(
     (total, item) => total + Number(item.amount || 0),
     0
   );
+  const itineraryByDay = itineraryItems.reduce<
+    Array<[number, typeof itineraryItems]>
+  >((groups, item) => {
+    const lastGroup = groups[groups.length - 1];
+    if (lastGroup && lastGroup[0] === item.dayNumber) {
+      lastGroup[1].push(item);
+    } else {
+      groups.push([item.dayNumber, [item]]);
+    }
+    return groups;
+  }, []);
 
   async function handleNoteSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -436,6 +507,193 @@ export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
     }
   }
 
+  async function handleItinerarySubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const dayNumber = Number(itineraryDayNumber);
+    if (
+      !tripId ||
+      !Number.isInteger(dayNumber) ||
+      dayNumber <= 0 ||
+      !itineraryTitle.trim() ||
+      !itineraryDescription.trim() ||
+      !itineraryLocation.trim() ||
+      !itineraryStartTime ||
+      !itineraryEndTime
+    ) {
+      return;
+    }
+
+    setItineraryError("");
+
+    try {
+      await addTripItineraryItem({
+        tripId,
+        item: {
+          dayNumber,
+          description: itineraryDescription.trim(),
+          endTime: itineraryEndTime,
+          location: itineraryLocation.trim(),
+          startTime: itineraryStartTime,
+          title: itineraryTitle.trim(),
+        },
+      }).unwrap();
+      setItineraryDayNumber("1");
+      setItineraryTitle("");
+      setItineraryDescription("");
+      setItineraryLocation("");
+      setItineraryStartTime("09:00");
+      setItineraryEndTime("10:00");
+    } catch {
+      setItineraryError("Could not save this itinerary item.");
+    }
+  }
+
+  function startEditItineraryItem(item: {
+    id: number;
+    dayNumber: number;
+    title: string;
+    description: string;
+    location: string;
+    startTime: string;
+    endTime: string;
+  }) {
+    setEditingItineraryItemId(item.id);
+    setEditItineraryDayNumber(String(item.dayNumber));
+    setEditItineraryTitle(item.title);
+    setEditItineraryDescription(item.description);
+    setEditItineraryLocation(item.location);
+    setEditItineraryStartTime(toTimeInput(item.startTime));
+    setEditItineraryEndTime(toTimeInput(item.endTime));
+    setItineraryError("");
+  }
+
+  function cancelEditItineraryItem() {
+    setEditingItineraryItemId(null);
+    setEditItineraryDayNumber("1");
+    setEditItineraryTitle("");
+    setEditItineraryDescription("");
+    setEditItineraryLocation("");
+    setEditItineraryStartTime("09:00");
+    setEditItineraryEndTime("10:00");
+  }
+
+  async function handleUpdateItineraryItem(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const dayNumber = Number(editItineraryDayNumber);
+    if (
+      !tripId ||
+      !editingItineraryItemId ||
+      !Number.isInteger(dayNumber) ||
+      dayNumber <= 0 ||
+      !editItineraryTitle.trim() ||
+      !editItineraryDescription.trim() ||
+      !editItineraryLocation.trim() ||
+      !editItineraryStartTime ||
+      !editItineraryEndTime
+    ) {
+      return;
+    }
+
+    setItineraryError("");
+    setUpdatingItineraryItemId(editingItineraryItemId);
+
+    try {
+      await updateTripItineraryItem({
+        tripId,
+        itemId: editingItineraryItemId,
+        item: {
+          dayNumber,
+          description: editItineraryDescription.trim(),
+          endTime: editItineraryEndTime,
+          location: editItineraryLocation.trim(),
+          startTime: editItineraryStartTime,
+          title: editItineraryTitle.trim(),
+        },
+      }).unwrap();
+      cancelEditItineraryItem();
+    } catch {
+      setItineraryError("Could not update this itinerary item.");
+    } finally {
+      setUpdatingItineraryItemId(null);
+    }
+  }
+
+  async function handleDeleteItineraryItem(itemId: number) {
+    if (!tripId || !window.confirm("Delete this itinerary item?")) {
+      return;
+    }
+
+    setItineraryError("");
+    setDeletingItineraryItemId(itemId);
+
+    try {
+      await deleteTripItineraryItem({ tripId, itemId }).unwrap();
+    } catch {
+      setItineraryError("Could not delete this itinerary item.");
+    } finally {
+      setDeletingItineraryItemId(null);
+    }
+  }
+
+  async function handleTagSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!tripId || !tagName.trim()) {
+      return;
+    }
+
+    setTagError("");
+
+    try {
+      await addTripTag({ tripId, tag: { name: tagName.trim() } }).unwrap();
+      setTagName("");
+    } catch {
+      setTagError("Could not save this tag.");
+    }
+  }
+
+  async function handleDeleteTag(tagId: number) {
+    if (!tripId) {
+      return;
+    }
+
+    setTagError("");
+    setDeletingTagId(tagId);
+
+    try {
+      await deleteTripTag({ tripId, tagId }).unwrap();
+    } catch {
+      setTagError("Could not remove this tag.");
+    } finally {
+      setDeletingTagId(null);
+    }
+  }
+
+  async function handleExportTrip() {
+    if (!tripId) {
+      return;
+    }
+
+    setExportError("");
+
+    try {
+      const exportText = await triggerExportTrip(tripId).unwrap();
+      const blob = new Blob([exportText], {
+        type: "text/plain;charset=utf-8",
+      });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `trip-${tripId}-export.txt`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setExportError("Could not export this trip.");
+    }
+  }
+
   return (
     <main className="simple-page">
       <Container>
@@ -511,7 +769,398 @@ export function TripDetailsPage({ tripIdParam }: TripDetailsPageProps) {
                   <strong>{formatDate(trip.createdAt)}</strong>
                 </div>
               </div>
+
+              <div className="trip-details-actions">
+                <button
+                  className="secondary-button"
+                  disabled={isExportingTrip}
+                  onClick={() => void handleExportTrip()}
+                  type="button"
+                >
+                  {isExportingTrip ? "Exporting..." : "Export Trip"}
+                </button>
+              </div>
+
+              {exportError && (
+                <p className="preferences-message error-text">{exportError}</p>
+              )}
             </article>
+
+            <section className="trip-tags-card" aria-labelledby="trip-tags">
+              <div className="notes-header">
+                <div>
+                  <p className="eyebrow">Tags</p>
+                  <h3 id="trip-tags">Trip tags</h3>
+                </div>
+              </div>
+
+              <form className="tag-form" onSubmit={handleTagSubmit}>
+                <label htmlFor="trip-tag-name">Add tag</label>
+                <div className="checklist-input-row">
+                  <input
+                    id="trip-tag-name"
+                    onChange={(event) => setTagName(event.target.value)}
+                    placeholder="Beach, family, business"
+                    type="text"
+                    value={tagName}
+                  />
+                  <button
+                    className="primary-button"
+                    disabled={isAddingTag || !tagName.trim()}
+                    type="submit"
+                  >
+                    {isAddingTag ? "Adding..." : "Add Tag"}
+                  </button>
+                </div>
+              </form>
+
+              {tagError && (
+                <p className="preferences-message error-text">{tagError}</p>
+              )}
+
+              {isTagsLoading && (
+                <div className="tag-chip-list" aria-label="Loading trip tags">
+                  <div className="skeleton-card note-skeleton" />
+                </div>
+              )}
+
+              {!isTagsLoading && isTagsError && (
+                <p className="preferences-message error-text">
+                  Could not load tags.
+                </p>
+              )}
+
+              {!isTagsLoading && !isTagsError && (
+                <div className="tag-chip-list">
+                  {tags.length === 0 ? (
+                    <p className="notes-empty">No tags saved yet.</p>
+                  ) : (
+                    tags.map((tag) => (
+                      <span className="tag-chip" key={tag.id}>
+                        {tag.name}
+                        <button
+                          aria-label={`Remove ${tag.name}`}
+                          disabled={isDeletingTag}
+                          onClick={() => void handleDeleteTag(tag.id)}
+                          type="button"
+                        >
+                          {isDeletingTag && deletingTagId === tag.id
+                            ? "Removing"
+                            : "Remove"}
+                        </button>
+                      </span>
+                    ))
+                  )}
+                </div>
+              )}
+            </section>
+
+            <section
+              className="trip-itinerary-card"
+              aria-labelledby="trip-itinerary-manager"
+            >
+              <div className="notes-header">
+                <div>
+                  <p className="eyebrow">Itinerary</p>
+                  <h3 id="trip-itinerary-manager">Itinerary manager</h3>
+                </div>
+              </div>
+
+              <form className="itinerary-form" onSubmit={handleItinerarySubmit}>
+                <div className="metadata-form-grid itinerary-form-grid">
+                  <label htmlFor="trip-itinerary-day">
+                    Day
+                    <input
+                      id="trip-itinerary-day"
+                      min="1"
+                      onChange={(event) =>
+                        setItineraryDayNumber(event.target.value)
+                      }
+                      type="number"
+                      value={itineraryDayNumber}
+                    />
+                  </label>
+                  <label htmlFor="trip-itinerary-title">
+                    Title
+                    <input
+                      id="trip-itinerary-title"
+                      onChange={(event) => setItineraryTitle(event.target.value)}
+                      placeholder="Museum visit"
+                      type="text"
+                      value={itineraryTitle}
+                    />
+                  </label>
+                  <label htmlFor="trip-itinerary-location">
+                    Location
+                    <input
+                      id="trip-itinerary-location"
+                      onChange={(event) =>
+                        setItineraryLocation(event.target.value)
+                      }
+                      placeholder="Downtown"
+                      type="text"
+                      value={itineraryLocation}
+                    />
+                  </label>
+                  <label htmlFor="trip-itinerary-start">
+                    Start time
+                    <input
+                      id="trip-itinerary-start"
+                      onChange={(event) =>
+                        setItineraryStartTime(event.target.value)
+                      }
+                      type="time"
+                      value={itineraryStartTime}
+                    />
+                  </label>
+                  <label htmlFor="trip-itinerary-end">
+                    End time
+                    <input
+                      id="trip-itinerary-end"
+                      onChange={(event) =>
+                        setItineraryEndTime(event.target.value)
+                      }
+                      type="time"
+                      value={itineraryEndTime}
+                    />
+                  </label>
+                  <label
+                    className="full-width-field"
+                    htmlFor="trip-itinerary-description"
+                  >
+                    Description
+                    <textarea
+                      id="trip-itinerary-description"
+                      onChange={(event) =>
+                        setItineraryDescription(event.target.value)
+                      }
+                      placeholder="What should happen during this stop?"
+                      rows={3}
+                      value={itineraryDescription}
+                    />
+                  </label>
+                </div>
+                <div className="form-actions">
+                  <button
+                    className="primary-button"
+                    disabled={
+                      isAddingItineraryItem ||
+                      !itineraryTitle.trim() ||
+                      !itineraryDescription.trim() ||
+                      !itineraryLocation.trim()
+                    }
+                    type="submit"
+                  >
+                    {isAddingItineraryItem ? "Adding..." : "Add Itinerary Item"}
+                  </button>
+                </div>
+              </form>
+
+              {itineraryError && (
+                <p className="preferences-message error-text">
+                  {itineraryError}
+                </p>
+              )}
+
+              {isItineraryLoading && (
+                <div
+                  className="itinerary-manager-list"
+                  aria-label="Loading trip itinerary"
+                >
+                  <div className="skeleton-card note-skeleton" />
+                </div>
+              )}
+
+              {!isItineraryLoading && isItineraryError && (
+                <p className="preferences-message error-text">
+                  Could not load itinerary items.
+                </p>
+              )}
+
+              {!isItineraryLoading && !isItineraryError && (
+                <div className="itinerary-manager-list">
+                  {itineraryItems.length === 0 ? (
+                    <p className="notes-empty">No itinerary items yet.</p>
+                  ) : (
+                    itineraryByDay.map(([dayNumber, items]) => (
+                      <div className="itinerary-day-group" key={dayNumber}>
+                        <h4>Day {dayNumber}</h4>
+                        {items.map((item) => (
+                          <article
+                            className="itinerary-manager-item"
+                            key={item.id}
+                          >
+                            {editingItineraryItemId === item.id ? (
+                              <form
+                                className="inline-itinerary-edit-form"
+                                onSubmit={handleUpdateItineraryItem}
+                              >
+                                <div className="metadata-form-grid itinerary-form-grid">
+                                  <label htmlFor={`itinerary-day-${item.id}`}>
+                                    Day
+                                    <input
+                                      id={`itinerary-day-${item.id}`}
+                                      min="1"
+                                      onChange={(event) =>
+                                        setEditItineraryDayNumber(
+                                          event.target.value
+                                        )
+                                      }
+                                      type="number"
+                                      value={editItineraryDayNumber}
+                                    />
+                                  </label>
+                                  <label htmlFor={`itinerary-title-${item.id}`}>
+                                    Title
+                                    <input
+                                      id={`itinerary-title-${item.id}`}
+                                      onChange={(event) =>
+                                        setEditItineraryTitle(
+                                          event.target.value
+                                        )
+                                      }
+                                      type="text"
+                                      value={editItineraryTitle}
+                                    />
+                                  </label>
+                                  <label
+                                    htmlFor={`itinerary-location-${item.id}`}
+                                  >
+                                    Location
+                                    <input
+                                      id={`itinerary-location-${item.id}`}
+                                      onChange={(event) =>
+                                        setEditItineraryLocation(
+                                          event.target.value
+                                        )
+                                      }
+                                      type="text"
+                                      value={editItineraryLocation}
+                                    />
+                                  </label>
+                                  <label htmlFor={`itinerary-start-${item.id}`}>
+                                    Start time
+                                    <input
+                                      id={`itinerary-start-${item.id}`}
+                                      onChange={(event) =>
+                                        setEditItineraryStartTime(
+                                          event.target.value
+                                        )
+                                      }
+                                      type="time"
+                                      value={editItineraryStartTime}
+                                    />
+                                  </label>
+                                  <label htmlFor={`itinerary-end-${item.id}`}>
+                                    End time
+                                    <input
+                                      id={`itinerary-end-${item.id}`}
+                                      onChange={(event) =>
+                                        setEditItineraryEndTime(
+                                          event.target.value
+                                        )
+                                      }
+                                      type="time"
+                                      value={editItineraryEndTime}
+                                    />
+                                  </label>
+                                  <label
+                                    className="full-width-field"
+                                    htmlFor={`itinerary-description-${item.id}`}
+                                  >
+                                    Description
+                                    <textarea
+                                      id={`itinerary-description-${item.id}`}
+                                      onChange={(event) =>
+                                        setEditItineraryDescription(
+                                          event.target.value
+                                        )
+                                      }
+                                      rows={3}
+                                      value={editItineraryDescription}
+                                    />
+                                  </label>
+                                </div>
+                                <div className="note-actions">
+                                  <button
+                                    className="primary-button compact-button"
+                                    disabled={
+                                      isUpdatingItineraryItem ||
+                                      !editItineraryTitle.trim() ||
+                                      !editItineraryDescription.trim() ||
+                                      !editItineraryLocation.trim()
+                                    }
+                                    type="submit"
+                                  >
+                                    {isUpdatingItineraryItem &&
+                                    updatingItineraryItemId === item.id
+                                      ? "Saving..."
+                                      : "Save"}
+                                  </button>
+                                  <button
+                                    className="secondary-button compact-button"
+                                    disabled={isUpdatingItineraryItem}
+                                    onClick={cancelEditItineraryItem}
+                                    type="button"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </form>
+                            ) : (
+                              <>
+                                <div>
+                                  <strong>{item.title}</strong>
+                                  <span>
+                                    {toTimeInput(item.startTime)} -{" "}
+                                    {toTimeInput(item.endTime)}
+                                  </span>
+                                  <p>{item.description}</p>
+                                </div>
+                                <span className="itinerary-location">
+                                  {item.location}
+                                </span>
+                                <div className="note-actions">
+                                  <button
+                                    className="secondary-button compact-button"
+                                    disabled={
+                                      isDeletingItineraryItem ||
+                                      isUpdatingItineraryItem
+                                    }
+                                    onClick={() =>
+                                      startEditItineraryItem(item)
+                                    }
+                                    type="button"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    className="secondary-button compact-button note-delete-button"
+                                    disabled={
+                                      isDeletingItineraryItem ||
+                                      isUpdatingItineraryItem
+                                    }
+                                    onClick={() =>
+                                      void handleDeleteItineraryItem(item.id)
+                                    }
+                                    type="button"
+                                  >
+                                    {isDeletingItineraryItem &&
+                                    deletingItineraryItemId === item.id
+                                      ? "Deleting..."
+                                      : "Delete"}
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </article>
+                        ))}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </section>
 
             <section className="trip-notes-card" aria-labelledby="trip-notes">
               <div className="notes-header">
